@@ -301,18 +301,9 @@ public class MyID3 extends AbstractClassifier implements
 	 * @throws Exception
 	 *             if computation fails
 	 */
-	private double computeInfoGain(Instances data, Attribute att)
-			throws Exception {
+	private double computeInfoGain(Instances data, Attribute att) throws Exception {
 
 		double infoGain = computeEntropy(data);
-//		System.out.println("分裂属性：" + att);
-//		System.out.println("训练集信息熵：" + infoGain);
-//		System.out.println("训练集个数：" + data.numInstances());
-//		System.out.println("训练集数据如下");
-//		for (Instance instance : data) {
-//			System.out.println(instance);
-//		}
-//		System.out.println("-----------------------------");
 		Instances[] splitData = splitData(data, att);
 		for (int j = 0; j < att.numValues(); j++) {
 			if (splitData[j].numInstances() > 0) {
