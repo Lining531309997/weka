@@ -117,6 +117,8 @@ public class C45PruneableClassifierTree extends ClassifierTree {
 	 */
 	public void buildClassifier(Instances data) throws Exception {
 
+		// 3.1 数据集预处理
+		System.out.println("STEP3.1 ==> 数据集预处理");
 		// can classifier tree handle the data?
 		getCapabilities().testWithFail(data);
 
@@ -124,21 +126,25 @@ public class C45PruneableClassifierTree extends ClassifierTree {
 		data = new Instances(data);
 		data.deleteWithMissingClass();
 
-		// TODO 1 -> 2 创建决策树
+		// TODO 3.2 调用基类ClassifierTree中buildTree()方法 ==> 创建决策树
+		System.out.println("STEP3.2 ==> 调用基类ClassifierTree中buildTree()方法 ==> 创建决策树");
 		buildTree(data, m_subtreeRaising || !m_cleanup);
 
-		// TODO ？？
+		// TODO 3.3 对比合并树 前后的错误率，不增加则合并。并递归处理孩子节点
 		if (m_collapseTheTree) {
+			System.out.println("STEP3.3 ==> 合并树");
 			collapse();
 		}
 
-		// 剪枝
+		// TODO 3.4 剪枝
 		if (m_pruneTheTree) {
+			System.out.println("STEP3.4 ==> 决策树剪枝");
 			prune();
 		}
 
-		// 清理内存
+		// TODO 3.5 清理内存
 		if (m_cleanup) {
+			System.out.println("STEP3.5 ==> 决策树清理内存");
 			cleanup(new Instances(data, 0));
 		}
 	}
