@@ -103,6 +103,7 @@ public class C45ModelSelection extends ModelSelection {
 
 		try {
 
+			System.out.println("STEP3.2.1.1 ==> 检测数据集个数以及实例是否为同一类");
 			// Check if all Instances belong to one class or if not
 			// enough Instances to split.
 			checkDistribution = new Distribution(data);
@@ -111,14 +112,14 @@ public class C45ModelSelection extends ModelSelection {
 			// 第一个条件：要求至少有2 * m_minNoObj(默认值2)个样本才可以进行分裂，因为每一个节点至少分出两个节点，每个节点至少有m_minNoObj个样本
 			// 第二个条件：检测这个节点上所有样本是否都属于同一类别
 			if (Utils.sm(checkDistribution.total(), 2 * m_minNoObj)
-					|| Utils.eq(checkDistribution.total(), checkDistribution
-							.perClass(checkDistribution.maxClass()))) {
+					|| Utils.eq(checkDistribution.total(), checkDistribution.perClass(checkDistribution.maxClass()))) {
 				return noSplitModel;
 			}
 
 			// Check if all attributes are nominal and have a
 			// lot of values.
 			if (m_allData != null) {
+				System.out.println("STEP3.2.1.2 ==> 检测数据集中属性是否为离散型以及属性值是否为多个");
 				Enumeration<Attribute> enu = data.enumerateAttributes();
 				while (enu.hasMoreElements()) {
 					attribute = enu.nextElement();

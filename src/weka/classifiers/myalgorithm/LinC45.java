@@ -26,6 +26,7 @@ import java.util.Enumeration;
 
 import weka.classifiers.AbstractClassifier;
 import weka.classifiers.Sourcable;
+import weka.classifiers.myalgorithm.util.DecimalCalculate;
 import weka.core.Attribute;
 import weka.core.Capabilities;
 import weka.core.Capabilities.Capability;
@@ -80,14 +81,14 @@ import weka.core.Utils;
  * @author Eibe Frank (eibe@cs.waikato.ac.nz)
  * @version $Revision: 6404 $
  */
-public class HuangC45 extends AbstractClassifier implements
+public class LinC45 extends AbstractClassifier implements
 		TechnicalInformationHandler, Sourcable {
 
 	/** for serialization */
 	static final long serialVersionUID = -2693678647096322561L;
 
 	/** The node's successors. */
-	private HuangC45[] m_Successors;
+	private LinC45[] m_Successors;
 
 	/** Attribute used for splitting. */
 	private Attribute m_Attribute;
@@ -231,9 +232,9 @@ public class HuangC45 extends AbstractClassifier implements
 			Instances[] splitData = splitData(data, m_Attribute);
 			
 			// TODO 6.根据最大信息增益的属性创建分支
-			m_Successors = new HuangC45[m_Attribute.numValues()];
+			m_Successors = new LinC45[m_Attribute.numValues()];
 			for (int j = 0; j < m_Attribute.numValues(); j++) {
-				m_Successors[j] = new HuangC45();
+				m_Successors[j] = new LinC45();
 				// TODO 7.递归创建决策树的子树
 				m_Successors[j].makeTree(splitData[j]);
 			}
@@ -319,7 +320,8 @@ public class HuangC45 extends AbstractClassifier implements
 		}
 		
 		double splitInfo = computeSplitInfo(data, att);
-		return infoGain / splitInfo;
+		
+		return DecimalCalculate.div(infoGain, splitInfo);
 	}
 	
 	/**
@@ -345,10 +347,9 @@ public class HuangC45 extends AbstractClassifier implements
 		for (int j = 0; j < att.numValues(); j++) {
 			if (splitData[j].numInstances() > 0) {
 				double num = splitData[j].numInstances();
-				splitInfo += num * (total - num) / total;
+				splitInfo += num * (total - num);
 			}
 		}
-		
 		return splitInfo;
 	}
 
@@ -381,7 +382,36 @@ public class HuangC45 extends AbstractClassifier implements
 			}
 		}
 		
-		return infoGain - 2 *sum;
+		// 如果所有实例属于同一类则返回0
+		if (sum == 0) {
+			return 0;
+		}
+		
+		return infoGain - data.numInstances() * sum;
+	}
+	
+	/**
+	 * 计算每个属性的信息熵
+	 * 
+	 * @param splitData
+	 * @return
+	 */
+	private double computeEntropy(Instances data) {
+		
+		// 计算每一种类别的个数
+		double[] classCounts = new double[data.numClasses()];
+		Enumeration<Instance> instEnum = data.enumerateInstances();
+		while (instEnum.hasMoreElements()) {
+			Instance inst = (Instance) instEnum.nextElement();
+			classCounts[(int) inst.classValue()]++;
+		}
+		
+		double result = 1.0;
+		for (double d : classCounts) {
+			result *= d;
+		}
+		
+		return result;
 	}
 	
 	/**
@@ -400,12 +430,21 @@ public class HuangC45 extends AbstractClassifier implements
 			classCounts[(int) inst.classValue()]++;
 		}
 		
+		// 数据集实例个数
+		double total = (double)splitData.numInstances();
+		// 检测实例是否为同一类
+		for (double d : classCounts) {
+			if (total == d) {
+				return 0;
+			}
+		}
+		
 		double result = 1.0;
 		for (double d : classCounts) {
 			result *= d;
 		}
 		
-		return result / (double)splitData.numInstances();
+		return DecimalCalculate.div(result, total);
 	}
 	
 	/**
@@ -417,26 +456,26 @@ public class HuangC45 extends AbstractClassifier implements
 	 * @throws Exception
 	 *             if computation fails
 	 */
-	private double computeEntropy(Instances data) throws Exception {
-
-		// 计算每一种类别的个数
-		double[] classCounts = new double[data.numClasses()];
-		Enumeration<Instance> instEnum = data.enumerateInstances();
-		while (instEnum.hasMoreElements()) {
-			Instance inst = (Instance) instEnum.nextElement();
-			classCounts[(int) inst.classValue()]++;
-		}
-		
-		// 计算数据集的熵
-		double entropy = 0;
-		for (int j = 0; j < data.numClasses(); j++) {
-			if (classCounts[j] > 0) {
-				entropy -= classCounts[j] * Utils.log2(classCounts[j]);
-			}
-		}
-		entropy /= (double) data.numInstances();
-		return entropy + Utils.log2(data.numInstances());
-	}
+//	private double computeEntropy(Instances data) throws Exception {
+//
+//		// 计算每一种类别的个数
+//		double[] classCounts = new double[data.numClasses()];
+//		Enumeration<Instance> instEnum = data.enumerateInstances();
+//		while (instEnum.hasMoreElements()) {
+//			Instance inst = (Instance) instEnum.nextElement();
+//			classCounts[(int) inst.classValue()]++;
+//		}
+//		
+//		// 计算数据集的熵
+//		double entropy = 0;
+//		for (int j = 0; j < data.numClasses(); j++) {
+//			if (classCounts[j] > 0) {
+//				entropy -= classCounts[j] * Utils.log2(classCounts[j]);
+//			}
+//		}
+//		entropy /= (double) data.numInstances();
+//		return entropy + Utils.log2(data.numInstances());
+//	}
 
 	/**
 	 * Splits a dataset according to the values of a nominal attribute.
@@ -628,7 +667,7 @@ public class HuangC45 extends AbstractClassifier implements
 	 *            the options for the classifier
 	 */
 	public static void main(String[] args) {
-		runClassifier(new HuangC45(), args);
+		runClassifier(new LinC45(), args);
 	}
 
 	// @Override
