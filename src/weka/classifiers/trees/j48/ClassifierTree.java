@@ -186,9 +186,9 @@ public class ClassifierTree implements Drawable, Serializable,
 			data = null;
 			m_sons = new ClassifierTree[m_localModel.numSubsets()];
 			// 遍历当前节点的子树
+			System.out.println("STEP3.2.3 ==> 遍历子树个数 ==> 构建子树");
 			for (int i = 0; i < m_sons.length; i++) {
 				// TODO 3.2.3 构建子树
-				System.out.println("STEP3.2.3 ==> 构建子树");
 				m_sons[i] = getNewTree(localInstances[i]);
 				localInstances[i] = null;
 			}
