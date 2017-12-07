@@ -101,10 +101,10 @@ public class C45Split extends ClassifierSplitModel {
   public void buildClassifier(Instances trainInstances) throws Exception {
 
     // Initialize the remaining instance variables.
-    m_numSubsets = 0;
-    m_splitPoint = Double.MAX_VALUE;
-    m_infoGain = 0;
-    m_gainRatio = 0;
+    m_numSubsets = 0;				// 分裂属性的子数据集个数
+    m_splitPoint = Double.MAX_VALUE;// 分裂属性的值
+    m_infoGain = 0;					// 分裂属性的信息增益
+    m_gainRatio = 0;				// 分裂属性的信息增益率
 
     // Different treatment for enumerated and numeric
     // attributes.
@@ -112,11 +112,13 @@ public class C45Split extends ClassifierSplitModel {
       m_complexityIndex = trainInstances.attribute(m_attIndex).numValues();
       m_index = m_complexityIndex;
       // TODO 5.处理分裂属性
+      System.out.println("STEP3.2.1.3.1 ==> 处理离散型属性");
       handleEnumeratedAttribute(trainInstances);
     } else {
       m_complexityIndex = 2;
       m_index = 0;
       trainInstances.sort(trainInstances.attribute(m_attIndex));
+      System.out.println("STEP3.2.1.3.1 ==> 处理连续型属性");
       handleNumericAttribute(trainInstances);
     }
   }
@@ -188,13 +190,11 @@ public class C45Split extends ClassifierSplitModel {
    * 
    * @exception Exception if something goes wrong
    */
-  private void handleEnumeratedAttribute(Instances trainInstances)
-    throws Exception {
+  private void handleEnumeratedAttribute(Instances trainInstances) throws Exception {
 
     Instance instance;
 
-    m_distribution = new Distribution(m_complexityIndex,
-      trainInstances.numClasses());
+    m_distribution = new Distribution(m_complexityIndex, trainInstances.numClasses());
 
     // Only Instances with known values are relevant.
     Enumeration<Instance> enu = trainInstances.enumerateInstances();
@@ -210,9 +210,12 @@ public class C45Split extends ClassifierSplitModel {
     // subsets.
     if (m_distribution.check(m_minNoObj)) {
       m_numSubsets = m_complexityIndex;
+      // 计算信息增益
+      System.out.println("STEP3.2.1.3.2 ==> 处理离散型属性 ==> 计算信息增益");
       m_infoGain = infoGainCrit.splitCritValue(m_distribution, m_sumOfWeights);
-      m_gainRatio = gainRatioCrit.splitCritValue(m_distribution,
-        m_sumOfWeights, m_infoGain);
+      // 计算信息增益率
+      System.out.println("STEP3.2.1.3.2 ==> 处理离散型属性 ==> 计算信息增益率");
+      m_gainRatio = gainRatioCrit.splitCritValue(m_distribution, m_sumOfWeights, m_infoGain);
     }
   }
 

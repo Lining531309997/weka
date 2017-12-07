@@ -89,17 +89,17 @@ public class C45ModelSelection extends ModelSelection {
 	@Override
 	public final ClassifierSplitModel selectModel(Instances data) {
 
-		double minResult;				// 最小的信息增益率
-		C45Split[] currentModel;		// 存放所有未分类属性产生的模型  
-		C45Split bestModel = null;		// 目前为止的最好模型 
-		NoSplit noSplitModel = null;	// 代表不用分的模型 
-		double averageInfoGain = 0;		// 各模型(currentModel)的平均信息增益  
-		int validModels = 0;			// 是否存在有效模型  
-		boolean multiVal = true;		// 是否具有多值 
-		Distribution checkDistribution; // 训练数据集的分布  
-		Attribute attribute;			// 属性列集合  
-		double sumOfWeights;			// 训练数据集的weight的和  
-		int i;							// 循环变量  
+		double minResult; // 最小的信息增益率
+		C45Split[] currentModel; // 存放所有未分类属性产生的模型
+		C45Split bestModel = null; // 目前为止的最好模型
+		NoSplit noSplitModel = null; // 代表不用分的模型
+		double averageInfoGain = 0; // 各模型(currentModel)的平均信息增益
+		int validModels = 0; // 是否存在有效模型
+		boolean multiVal = true; // 是否具有多值
+		Distribution checkDistribution; // 训练数据集的分布
+		Attribute attribute; // 属性列集合
+		double sumOfWeights; // 训练数据集的weight的和
+		int i; // 循环变量
 
 		try {
 
@@ -109,10 +109,12 @@ public class C45ModelSelection extends ModelSelection {
 			checkDistribution = new Distribution(data);
 			noSplitModel = new NoSplit(checkDistribution);
 
-			// 第一个条件：要求至少有2 * m_minNoObj(默认值2)个样本才可以进行分裂，因为每一个节点至少分出两个节点，每个节点至少有m_minNoObj个样本
+			// 第一个条件：要求至少有2 *
+			// m_minNoObj(默认值2)个样本才可以进行分裂，因为每一个节点至少分出两个节点，每个节点至少有m_minNoObj个样本
 			// 第二个条件：检测这个节点上所有样本是否都属于同一类别
 			if (Utils.sm(checkDistribution.total(), 2 * m_minNoObj)
-					|| Utils.eq(checkDistribution.total(), checkDistribution.perClass(checkDistribution.maxClass()))) {
+					|| Utils.eq(checkDistribution.total(), checkDistribution
+							.perClass(checkDistribution.maxClass()))) {
 				return noSplitModel;
 			}
 
@@ -138,21 +140,23 @@ public class C45ModelSelection extends ModelSelection {
 			sumOfWeights = data.sumOfWeights();
 
 			// For each attribute.
+			System.out.println("STEP3.2.1.3 ==> START 调用 " + currentModel.getClass().getName() + "中buildClassifier() ==> 计算每个属性信息增益");
 			for (i = 0; i < data.numAttributes(); i++) {
 
 				// Apart from class attribute.
 				if (i != (data).classIndex()) {
 
 					// Get models for current attribute.
-					currentModel[i] = new C45Split(i, m_minNoObj, sumOfWeights,
-							m_useMDLcorrection);
-					// TODO 4.根据当前属性来创建分类器
+					currentModel[i] = new C45Split(i, m_minNoObj, sumOfWeights,	m_useMDLcorrection);
+					// 根据C45Split分裂模型创建分类器
+					System.out.println("---- 计算属性" + data.get(0).attribute(i) + "的信息增益 ----");
 					currentModel[i].buildClassifier(data);
 
 					// Check if useful split for current attribute
 					// exists and check for enumerated attributes with
 					// a lot of values.
 					if (currentModel[i].checkModel()) {
+						// 计算C45Split分裂模型的信息增益
 						if (m_allData != null) {
 							if ((data.attribute(i).isNumeric())
 									|| (multiVal || Utils.sm(data.attribute(i)
@@ -172,14 +176,17 @@ public class C45ModelSelection extends ModelSelection {
 					currentModel[i] = null;
 				}
 			}
+			System.out.println("STEP3.2.1.3 ==> END 返回 " + getClass().getName() + "中selectModel() ==> 计算每个属性信息增益完成");
 
 			// Check if any useful split was found.
 			if (validModels == 0) {
 				return noSplitModel;
 			}
+			System.out.println("STEP3.2.1.4 ==> 根据属性的信息增益计算平均信息增益");
 			averageInfoGain = averageInfoGain / validModels;
 
 			// Find "best" attribute to split on.
+			System.out.println("STEP3.2.1.5 ==> 以平均信息增益做基准遍历属性信息增益 ==> 计算最佳分裂属性");
 			minResult = 0;
 			for (i = 0; i < data.numAttributes(); i++) {
 				if ((i != (data).classIndex())
@@ -210,6 +217,9 @@ public class C45ModelSelection extends ModelSelection {
 			if ((m_allData != null) && (!m_doNotMakeSplitPointActualValue)) {
 				bestModel.setSplitPoint(m_allData);
 			}
+			System.out.println("--------------------");
+			System.out.println("最佳分裂属性 ==> " + data.get(0).attribute(bestModel.m_attIndex));
+			System.out.println("--------------------");
 			return bestModel;
 		} catch (Exception e) {
 			e.printStackTrace();

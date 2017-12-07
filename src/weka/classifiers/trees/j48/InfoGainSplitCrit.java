@@ -68,8 +68,14 @@ public final class InfoGainSplitCrit extends EntropyBasedSplitCrit {
     double numerator;
     double noUnknown;
     double unknownRate;
+    
+    // 获取去除当前属性数据集后的权重
     noUnknown = totalNoInst - bags.total();
+    
+    // 计算除去当前属性数据集后权重在总数据集占的比例
     unknownRate = noUnknown / totalNoInst;
+    
+    // entropy(S) - entropy(S,A)
     numerator = (oldEnt(bags) - newEnt(bags));
     numerator = (1 - unknownRate) * numerator;
 
