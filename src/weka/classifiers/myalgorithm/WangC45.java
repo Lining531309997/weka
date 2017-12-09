@@ -26,6 +26,7 @@ import java.util.Enumeration;
 
 import weka.classifiers.AbstractClassifier;
 import weka.classifiers.Sourcable;
+import weka.classifiers.myalgorithm.util.DecimalCalculate;
 import weka.core.Attribute;
 import weka.core.Capabilities;
 import weka.core.Capabilities.Capability;
@@ -80,14 +81,14 @@ import weka.core.Utils;
  * @author Eibe Frank (eibe@cs.waikato.ac.nz)
  * @version $Revision: 6404 $
  */
-public class MyJ48 extends AbstractClassifier implements
+public class WangC45 extends AbstractClassifier implements
 		TechnicalInformationHandler, Sourcable {
 
 	/** for serialization */
 	static final long serialVersionUID = -2693678647096322561L;
 
 	/** The node's successors. */
-	private MyJ48[] m_Successors;
+	private WangC45[] m_Successors;
 
 	/** Attribute used for splitting. */
 	private Attribute m_Attribute;
@@ -231,9 +232,9 @@ public class MyJ48 extends AbstractClassifier implements
 			Instances[] splitData = splitData(data, m_Attribute);
 			
 			// TODO 6.根据最大信息增益的属性创建分支
-			m_Successors = new MyJ48[m_Attribute.numValues()];
+			m_Successors = new WangC45[m_Attribute.numValues()];
 			for (int j = 0; j < m_Attribute.numValues(); j++) {
-				m_Successors[j] = new MyJ48();
+				m_Successors[j] = new WangC45();
 				// TODO 7.递归创建决策树的子树
 				m_Successors[j].makeTree(splitData[j]);
 			}
@@ -346,7 +347,7 @@ public class MyJ48 extends AbstractClassifier implements
 			if (splitData[j].numInstances() > 0) {
 				double num = splitData[j].numInstances();
 				double probability = num / total;
-				splitInfo -= probability * Utils.log2(probability);
+				splitInfo -= probability * computeLog2(probability);
 			}
 		}
 		
@@ -383,7 +384,7 @@ public class MyJ48 extends AbstractClassifier implements
 				
 //				double num = splitData[j].numInstances();
 //				double probability = num / total;
-//				splitInfo -= probability * Utils.log2(probability);
+//				splitInfo -= probability * computeLog2(probability);
 			}
 		}
 		
@@ -413,13 +414,19 @@ public class MyJ48 extends AbstractClassifier implements
 		double entropy = 0;
 		for (int j = 0; j < data.numClasses(); j++) {
 			if (classCounts[j] > 0) {
-				entropy -= classCounts[j] * Utils.log2(classCounts[j]);
+				entropy -= classCounts[j] * computeLog2(classCounts[j]);
 			}
 		}
 		entropy /= (double) data.numInstances();
-		return entropy + Utils.log2(data.numInstances());
+		return entropy + computeLog2(data.numInstances());
 	}
 
+	private double computeLog2(double m) {
+		double result = 0;
+		result = DecimalCalculate.div((3 - m) * (m - 1), 2 * Math.log(2));
+		return result;
+	}
+	
 	/**
 	 * Splits a dataset according to the values of a nominal attribute.
 	 *
@@ -610,7 +617,7 @@ public class MyJ48 extends AbstractClassifier implements
 	 *            the options for the classifier
 	 */
 	public static void main(String[] args) {
-		runClassifier(new MyJ48(), args);
+		runClassifier(new WangC45(), args);
 	}
 
 	// @Override

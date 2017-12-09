@@ -19,7 +19,7 @@
  *
  */
 
-package weka.classifiers.trees.j48;
+package weka.classifiers.trees.C45.Chen;
 
 import java.util.Enumeration;
 
@@ -191,6 +191,7 @@ public class C45ModelSelection extends ModelSelection {
 			for (i = 0; i < data.numAttributes(); i++) {
 				if ((i != (data).classIndex())
 						&& (currentModel[i].checkModel())) {
+//					System.out.println(i + " ==> 计算最佳分裂属性 ==> " + (data).classIndex() + " ==> " + (currentModel[i].checkModel()));
 					// Use 1E-3 here to get a closer approximation to the
 					// original
 					// implementation.
@@ -216,16 +217,6 @@ public class C45ModelSelection extends ModelSelection {
 			// Set the split point analogue to C45 if attribute numeric.
 			if ((m_allData != null) && (!m_doNotMakeSplitPointActualValue)) {
 				bestModel.setSplitPoint(m_allData);
-			}
-//			System.out.println("--------------------");
-//			System.out.println("最佳分裂属性 ==> " + data.get(0).attribute(bestModel.m_attIndex));
-//			System.out.println("--------------------");
-			if (data.numInstances() > 2000) {
-				for (int i1 = 0; i1 < data.numInstances(); i1++) {
-					for (int j = 0; j < data.numInstances(); j++) {
-						i1++;
-					}
-				}
 			}
 			return bestModel;
 		} catch (Exception e) {

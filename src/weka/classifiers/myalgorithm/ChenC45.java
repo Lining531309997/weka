@@ -27,12 +27,12 @@ import java.util.Vector;
 
 import weka.classifiers.AbstractClassifier;
 import weka.classifiers.Sourcable;
-import weka.classifiers.trees.C45.Huang.BinC45ModelSelection;
-import weka.classifiers.trees.C45.Huang.C45ModelSelection;
-import weka.classifiers.trees.C45.Huang.C45PruneableClassifierTree;
-import weka.classifiers.trees.C45.Huang.ClassifierTree;
-import weka.classifiers.trees.C45.Huang.ModelSelection;
-import weka.classifiers.trees.C45.Huang.PruneableClassifierTree;
+import weka.classifiers.trees.C45.Chen.BinC45ModelSelection;
+import weka.classifiers.trees.C45.Chen.C45ModelSelection;
+import weka.classifiers.trees.C45.Chen.C45PruneableClassifierTree;
+import weka.classifiers.trees.C45.Chen.ClassifierTree;
+import weka.classifiers.trees.C45.Chen.ModelSelection;
+import weka.classifiers.trees.C45.Chen.PruneableClassifierTree;
 import weka.core.AdditionalMeasureProducer;
 import weka.core.Capabilities;
 import weka.core.Capabilities.Capability;
@@ -152,7 +152,7 @@ import weka.core.WeightedInstancesHandler;
  * @author Eibe Frank (eibe@cs.waikato.ac.nz)
  * @version $Revision: 11194 $
  */
-public class HuangC45 extends AbstractClassifier implements OptionHandler,
+public class ChenC45 extends AbstractClassifier implements OptionHandler,
 		Drawable, Matchable, Sourcable, WeightedInstancesHandler, Summarizable,
 		AdditionalMeasureProducer, TechnicalInformationHandler,
 		PartitionGenerator {
@@ -1256,6 +1256,6 @@ public class HuangC45 extends AbstractClassifier implements OptionHandler,
 	 *            the commandline options
 	 */
 	public static void main(String[] argv) {
-		runClassifier(new HuangC45(), argv);
+		runClassifier(new ChenC45(), argv);
 	}
 }

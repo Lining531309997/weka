@@ -80,14 +80,14 @@ import weka.core.Utils;
  * @author Eibe Frank (eibe@cs.waikato.ac.nz)
  * @version $Revision: 6404 $
  */
-public class MyJ48 extends AbstractClassifier implements
+public class HuangAiHuiC45 extends AbstractClassifier implements
 		TechnicalInformationHandler, Sourcable {
 
 	/** for serialization */
 	static final long serialVersionUID = -2693678647096322561L;
 
 	/** The node's successors. */
-	private MyJ48[] m_Successors;
+	private HuangAiHuiC45[] m_Successors;
 
 	/** Attribute used for splitting. */
 	private Attribute m_Attribute;
@@ -205,7 +205,7 @@ public class MyJ48 extends AbstractClassifier implements
 			Attribute att = (Attribute) attEnum.nextElement();
 			// TODO 2.计算信息增益率
 			infoGains[att.index()] = computeInfoGainRatio(data, att);
-//			infoGains[att.index()] = computeSplitInfo(data, att);
+//			infoGains[att.index()] = computeInfoGain(data, att);
 		}
 		
 		// TODO 3.获取最大信息增益得属性
@@ -231,9 +231,9 @@ public class MyJ48 extends AbstractClassifier implements
 			Instances[] splitData = splitData(data, m_Attribute);
 			
 			// TODO 6.根据最大信息增益的属性创建分支
-			m_Successors = new MyJ48[m_Attribute.numValues()];
+			m_Successors = new HuangAiHuiC45[m_Attribute.numValues()];
 			for (int j = 0; j < m_Attribute.numValues(); j++) {
-				m_Successors[j] = new MyJ48();
+				m_Successors[j] = new HuangAiHuiC45();
 				// TODO 7.递归创建决策树的子树
 				m_Successors[j].makeTree(splitData[j]);
 			}
@@ -345,8 +345,7 @@ public class MyJ48 extends AbstractClassifier implements
 		for (int j = 0; j < att.numValues(); j++) {
 			if (splitData[j].numInstances() > 0) {
 				double num = splitData[j].numInstances();
-				double probability = num / total;
-				splitInfo -= probability * Utils.log2(probability);
+				splitInfo += num * (total - num) / total;
 			}
 		}
 		
@@ -366,9 +365,6 @@ public class MyJ48 extends AbstractClassifier implements
 	 */
 	private double computeInfoGain(Instances data, Attribute att) throws Exception {
 		
-//		double total = data.numInstances();
-//		double splitInfo = 0.0;
-		
 		// TODO 2.1 计算训练集的熵
 		double infoGain = computeEntropy(data);
 		
@@ -376,18 +372,40 @@ public class MyJ48 extends AbstractClassifier implements
 		Instances[] splitData = splitData(data, att);
 		
 		// TODO 2.3 遍历每个属性值对应的数据集计算熵
+		double sum = 0.0;
 		for (int j = 0; j < att.numValues(); j++) {
 			if (splitData[j].numInstances() > 0) {
-				// TODO 2.4 计算信息增益
-				infoGain -= ((double) splitData[j].numInstances() / (double) data.numInstances()) * computeEntropy(splitData[j]);
-				
-//				double num = splitData[j].numInstances();
-//				double probability = num / total;
-//				splitInfo -= probability * Utils.log2(probability);
+				// TODO 2.4 计算化简后信息增益
+//				infoGain -= ((double) splitData[j].numInstances() / (double) data.numInstances()) * computeEntropy(splitData[j]);
+				sum += computeInfoForAttribute(splitData[j]);
 			}
 		}
 		
-		return infoGain;
+		return infoGain - 2 *sum;
+	}
+	
+	/**
+	 * 计算每个属性的信息熵
+	 * 
+	 * @param splitData
+	 * @return
+	 */
+	private double computeInfoForAttribute(Instances splitData) {
+		
+		// 计算每一种类别的个数
+		double[] classCounts = new double[splitData.numClasses()];
+		Enumeration<Instance> instEnum = splitData.enumerateInstances();
+		while (instEnum.hasMoreElements()) {
+			Instance inst = (Instance) instEnum.nextElement();
+			classCounts[(int) inst.classValue()]++;
+		}
+		
+		double result = 1.0;
+		for (double d : classCounts) {
+			result *= d;
+		}
+		
+		return result / (double)splitData.numInstances();
 	}
 	
 	/**
@@ -610,7 +628,7 @@ public class MyJ48 extends AbstractClassifier implements
 	 *            the options for the classifier
 	 */
 	public static void main(String[] args) {
-		runClassifier(new MyJ48(), args);
+		runClassifier(new HuangC45(), args);
 	}
 
 	// @Override

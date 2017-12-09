@@ -1,118 +1,220 @@
 /*
- *    This program is free software; you can redistribute it and/or modify
- *    it under the terms of the GNU General Public License as published by
- *    the Free Software Foundation; either version 2 of the License, or
- *    (at your option) any later version.
+ *   This program is free software: you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License as published by
+ *   the Free Software Foundation, either version 3 of the License, or
+ *   (at your option) any later version.
  *
- *    This program is distributed in the hope that it will be useful,
- *    but WITHOUT ANY WARRANTY; without even the implied warranty of
- *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *    GNU General Public License for more details.
+ *   This program is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU General Public License for more details.
  *
- *    You should have received a copy of the GNU General Public License
- *    along with this program; if not, write to the Free Software
- *    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   You should have received a copy of the GNU General Public License
+ *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 /*
- *    Id3.java
- *    Copyright (C) 1999 University of Waikato, Hamilton, New Zealand
+ *    J48.java
+ *    Copyright (C) 1999-2012 University of Waikato, Hamilton, New Zealand
  *
  */
 
 package weka.classifiers.myalgorithm;
 
+import java.util.Collections;
 import java.util.Enumeration;
+import java.util.Vector;
 
 import weka.classifiers.AbstractClassifier;
 import weka.classifiers.Sourcable;
-import weka.core.Attribute;
+import weka.classifiers.trees.C45.LiNing.BinC45ModelSelection;
+import weka.classifiers.trees.C45.LiNing.C45ModelSelection;
+import weka.classifiers.trees.C45.LiNing.C45PruneableClassifierTree;
+import weka.classifiers.trees.C45.LiNing.ClassifierTree;
+import weka.classifiers.trees.C45.LiNing.ModelSelection;
+import weka.classifiers.trees.C45.LiNing.PruneableClassifierTree;
+import weka.core.AdditionalMeasureProducer;
 import weka.core.Capabilities;
 import weka.core.Capabilities.Capability;
+import weka.core.Drawable;
 import weka.core.Instance;
 import weka.core.Instances;
-import weka.core.NoSupportForMissingValuesException;
+import weka.core.Matchable;
+import weka.core.Option;
+import weka.core.OptionHandler;
+import weka.core.PartitionGenerator;
 import weka.core.RevisionUtils;
+import weka.core.Summarizable;
 import weka.core.TechnicalInformation;
 import weka.core.TechnicalInformation.Field;
 import weka.core.TechnicalInformation.Type;
 import weka.core.TechnicalInformationHandler;
 import weka.core.Utils;
+import weka.core.WeightedInstancesHandler;
 
 /**
- * <!-- globalinfo-start --> Class for constructing an unpruned decision tree
- * based on the ID3 algorithm. Can only deal with nominal attributes. No missing
- * values allowed. Empty leaves may result in unclassified instances. For more
- * information see: <br/>
+ * <!-- globalinfo-start --> Class for generating a pruned or unpruned C4.5
+ * decision tree. For more information, see<br/>
  * <br/>
- * R. Quinlan (1986). Induction of decision trees. Machine Learning.
- * 1(1):81-106.
+ * Ross Quinlan (1993). C4.5: Programs for Machine Learning. Morgan Kaufmann
+ * Publishers, San Mateo, CA.
  * <p/>
  * <!-- globalinfo-end -->
- *
+ * 
  * <!-- technical-bibtex-start --> BibTeX:
  * 
  * <pre>
- * &#64;article{Quinlan1986,
- *    author = {R. Quinlan},
- *    journal = {Machine Learning},
- *    number = {1},
- *    pages = {81-106},
- *    title = {Induction of decision trees},
- *    volume = {1},
- *    year = {1986}
+ * &#64;book{Quinlan1993,
+ *    address = {San Mateo, CA},
+ *    author = {Ross Quinlan},
+ *    publisher = {Morgan Kaufmann Publishers},
+ *    title = {C4.5: Programs for Machine Learning},
+ *    year = {1993}
  * }
  * </pre>
  * <p/>
  * <!-- technical-bibtex-end -->
- *
+ * 
  * <!-- options-start --> Valid options are:
  * <p/>
  * 
  * <pre>
- * -D
- *  If set, classifier is run in debug mode and
- *  may output additional info to the console
+ * -U
+ *  Use unpruned tree.
+ * </pre>
+ * 
+ * <pre>
+ * -O
+ *  Do not collapse tree.
+ * </pre>
+ * 
+ * <pre>
+ * -C &lt;pruning confidence&gt;
+ *  Set confidence threshold for pruning.
+ *  (default 0.25)
+ * </pre>
+ * 
+ * <pre>
+ * -M &lt;minimum number of instances&gt;
+ *  Set minimum number of instances per leaf.
+ *  (default 2)
+ * </pre>
+ * 
+ * <pre>
+ * -R
+ *  Use reduced error pruning.
+ * </pre>
+ * 
+ * <pre>
+ * -N &lt;number of folds&gt;
+ *  Set number of folds for reduced error
+ *  pruning. One fold is used as pruning set.
+ *  (default 3)
+ * </pre>
+ * 
+ * <pre>
+ * -B
+ *  Use binary splits only.
+ * </pre>
+ * 
+ * <pre>
+ * -S
+ *  Don't perform subtree raising.
+ * </pre>
+ * 
+ * <pre>
+ * -L
+ *  Do not clean up after the tree has been built.
+ * </pre>
+ * 
+ * <pre>
+ * -A
+ *  Laplace smoothing for predicted probabilities.
+ * </pre>
+ * 
+ * <pre>
+ * -J
+ *  Do not use MDL correction for info gain on numeric attributes.
+ * </pre>
+ * 
+ * <pre>
+ * -Q &lt;seed&gt;
+ *  Seed for random data shuffling (default 1).
+ * </pre>
+ * 
+ * <pre>
+ * -doNotMakeSplitPointActualValue
+ *  Do not make split point actual value.
  * </pre>
  * 
  * <!-- options-end -->
- *
+ * 
  * @author Eibe Frank (eibe@cs.waikato.ac.nz)
- * @version $Revision: 6404 $
+ * @version $Revision: 11194 $
  */
-public class MyC45 extends AbstractClassifier implements
-		TechnicalInformationHandler, Sourcable {
+public class MyC45 extends AbstractClassifier implements OptionHandler,
+		Drawable, Matchable, Sourcable, WeightedInstancesHandler, Summarizable,
+		AdditionalMeasureProducer, TechnicalInformationHandler,
+		PartitionGenerator {
 
 	/** for serialization */
-	static final long serialVersionUID = -2693678647096322561L;
+	static final long serialVersionUID = -217733168393644444L;
 
-	/** The node's successors. */
-	private MyC45[] m_Successors;
+	/** The decision tree */
+	protected ClassifierTree m_root;
 
-	/** Attribute used for splitting. */
-	private Attribute m_Attribute;
+	/** Unpruned tree? */
+	protected boolean m_unpruned = false;
 
-	/** Class value if node is leaf. */
-	private double m_ClassValue;
+	/** Collapse tree? */
+	protected boolean m_collapseTree = true;
 
-	/** Class distribution if node is leaf. */
-	private double[] m_Distribution;
+	/** Confidence level */
+	protected float m_CF = 0.25f;
 
-	/** Class attribute of dataset. */
-	private Attribute m_ClassAttribute;
-	
+	/** Minimum number of instances */
+	protected int m_minNumObj = 2;
+
+	/** Use MDL correction? */
+	protected boolean m_useMDLcorrection = true;
+
 	/**
-	 * Returns a string describing the classifier.
+	 * Determines whether probabilities are smoothed using Laplace correction
+	 * when predictions are generated
+	 */
+	protected boolean m_useLaplace = false;
+
+	/** Use reduced error pruning? */
+	protected boolean m_reducedErrorPruning = false;
+
+	/** Number of folds for reduced error pruning. */
+	protected int m_numFolds = 3;
+
+	/** Binary splits on nominal attributes? */
+	protected boolean m_binarySplits = false;
+
+	/** Subtree raising to be performed? */
+	protected boolean m_subtreeRaising = true;
+
+	/** Cleanup after the tree has been built. */
+	protected boolean m_noCleanup = false;
+
+	/** Random number seed for reduced-error pruning. */
+	protected int m_Seed = 1;
+
+	/** Do not relocate split point to actual data value */
+	protected boolean m_doNotMakeSplitPointActualValue;
+
+	/**
+	 * Returns a string describing classifier
 	 * 
-	 * @return a description suitable for the GUI.
+	 * @return a description suitable for displaying in the
+	 *         explorer/experimenter gui
 	 */
 	public String globalInfo() {
 
-		return "Class for constructing an unpruned decision tree based on the ID3 "
-				+ "algorithm. Can only deal with nominal attributes. No missing values "
-				+ "allowed. Empty leaves may result in unclassified instances. For more "
-				+ "information see: \n\n"
-				+ getTechnicalInformation().toString();
+		return "Class for generating a pruned or unpruned C4.5 decision tree. For more "
+				+ "information, see\n\n" + getTechnicalInformation().toString();
 	}
 
 	/**
@@ -122,32 +224,36 @@ public class MyC45 extends AbstractClassifier implements
 	 * 
 	 * @return the technical information about this class
 	 */
+	@Override
 	public TechnicalInformation getTechnicalInformation() {
 		TechnicalInformation result;
 
-		result = new TechnicalInformation(Type.ARTICLE);
-		result.setValue(Field.AUTHOR, "R. Quinlan");
-		result.setValue(Field.YEAR, "1986");
-		result.setValue(Field.TITLE, "Induction of decision trees");
-		result.setValue(Field.JOURNAL, "Machine Learning");
-		result.setValue(Field.VOLUME, "1");
-		result.setValue(Field.NUMBER, "1");
-		result.setValue(Field.PAGES, "81-106");
+		result = new TechnicalInformation(Type.BOOK);
+		result.setValue(Field.AUTHOR, "Ross Quinlan");
+		result.setValue(Field.YEAR, "1993");
+		result.setValue(Field.TITLE, "C4.5: Programs for Machine Learning");
+		result.setValue(Field.PUBLISHER, "Morgan Kaufmann Publishers");
+		result.setValue(Field.ADDRESS, "San Mateo, CA");
 
 		return result;
 	}
 
 	/**
 	 * Returns default capabilities of the classifier.
-	 *
+	 * 
 	 * @return the capabilities of this classifier
 	 */
+	@Override
 	public Capabilities getCapabilities() {
-		Capabilities result = super.getCapabilities();
-		result.disableAll();
+		Capabilities result;
 
+		result = new Capabilities(this);
+		result.disableAll();
 		// attributes
 		result.enable(Capability.NOMINAL_ATTRIBUTES);
+		result.enable(Capability.NUMERIC_ATTRIBUTES);
+		result.enable(Capability.DATE_ATTRIBUTES);
+		result.enable(Capability.MISSING_VALUES);
 
 		// class
 		result.enable(Capability.NOMINAL_CLASS);
@@ -160,438 +266,957 @@ public class MyC45 extends AbstractClassifier implements
 	}
 
 	/**
-	 * Builds Id3 decision tree classifier.
-	 *
-	 * @param data
-	 *            the training data
-	 * @exception Exception
-	 *                if classifier can't be built successfully
-	 */
-	public void buildClassifier(Instances data) throws Exception {
-
-		// can classifier handle the data?
-		getCapabilities().testWithFail(data);
-
-		// remove instances with missing class
-		data = new Instances(data);
-		data.deleteWithMissingClass();
-
-		// TODO 1.创建决策树
-		makeTree(data);
-	}
-
-	/**
-	 * Method for building an Id3 tree.
-	 *
-	 * @param data
-	 *            the training data
-	 * @exception Exception
-	 *                if decision tree can't be built successfully
-	 */
-	private void makeTree(Instances data) throws Exception {
-
-		// Check if no instances have reached this node.
-		if (data.numInstances() == 0) {
-			m_Attribute = null;
-			m_ClassValue = Utils.missingValue();
-			m_Distribution = new double[data.numClasses()];
-			return;
-		}
-		
-		// Compute attribute with maximum information gain.
-		double[] infoGains = new double[data.numAttributes()];
-		Enumeration<Attribute> attEnum = data.enumerateAttributes();
-		while (attEnum.hasMoreElements()) {
-			Attribute att = (Attribute) attEnum.nextElement();
-			// TODO 2.计算信息增益率
-			infoGains[att.index()] = computeInfoGainRatio(data, att);
-//			infoGains[att.index()] = computeSplitInfo(data, att);
-		}
-		
-		// TODO 3.获取最大信息增益得属性
-		m_Attribute = data.attribute(Utils.maxIndex(infoGains));
-		
-		// Make leaf if information gain is zero.
-		// Otherwise create successors.
-		// TODO 4.判断叶子节点与分支
-		if (Utils.eq(infoGains[m_Attribute.index()], 0)) {
-			m_Attribute = null;
-			m_Distribution = new double[data.numClasses()];
-			Enumeration<Instance> instEnum = data.enumerateInstances();
-			while (instEnum.hasMoreElements()) {
-				Instance inst = (Instance) instEnum.nextElement();
-				m_Distribution[(int) inst.classValue()]++;
-			}
-			Utils.normalize(m_Distribution);
-			// 叶子节点的类别值
-			m_ClassValue = Utils.maxIndex(m_Distribution);
-			m_ClassAttribute = data.classAttribute();
-		} else {
-			// TODO 5.根据最大信息增益的属性划分数据集
-			Instances[] splitData = splitData(data, m_Attribute);
-			
-			// TODO 6.根据最大信息增益的属性创建分支
-			m_Successors = new MyC45[m_Attribute.numValues()];
-			for (int j = 0; j < m_Attribute.numValues(); j++) {
-				m_Successors[j] = new MyC45();
-				// TODO 7.递归创建决策树的子树
-				m_Successors[j].makeTree(splitData[j]);
-			}
-		}
-	}
-
-	/**
-	 * Classifies a given test instance using the decision tree.
-	 *
-	 * @param instance
-	 *            the instance to be classified
-	 * @return the classification
-	 * @throws NoSupportForMissingValuesException
-	 *             if instance has missing values
-	 */
-	public double classifyInstance(Instance instance)
-			throws NoSupportForMissingValuesException {
-
-		if (instance.hasMissingValue()) {
-			throw new NoSupportForMissingValuesException(
-					"Id3: no missing values, " + "please.");
-		}
-		if (m_Attribute == null) {
-			return m_ClassValue;
-		} else {
-			return m_Successors[(int) instance.value(m_Attribute)]
-					.classifyInstance(instance);
-		}
-	}
-
-	/**
-	 * Computes class distribution for instance using decision tree.
-	 *
-	 * @param instance
-	 *            the instance for which distribution is to be computed
-	 * @return the class distribution for the given instance
-	 * @throws NoSupportForMissingValuesException
-	 *             if instance has missing values
-	 */
-	public double[] distributionForInstance(Instance instance)
-			throws NoSupportForMissingValuesException {
-
-		if (instance.hasMissingValue()) {
-			throw new NoSupportForMissingValuesException(
-					"Id3: no missing values, " + "please.");
-		}
-		if (m_Attribute == null) {
-			return m_Distribution;
-		} else {
-			return m_Successors[(int) instance.value(m_Attribute)]
-					.distributionForInstance(instance);
-		}
-	}
-
-	/**
-	 * Prints the decision tree using the private toString method from below.
-	 *
-	 * @return a textual description of the classifier
-	 */
-	public String toString() {
-
-		if ((m_Distribution == null) && (m_Successors == null)) {
-			return "Id3: No model built yet.";
-		}
-		return "Id3\n\n" + toString(0);
-	}
-
-	/**
-	 * Computes information gain for an attribute.
-	 *
-	 * @param data
-	 *            the data for which info gain is to be computed
-	 * @param att
-	 *            the attribute
-	 * @return the information gain for the given attribute and data
-	 * @throws Exception
-	 *             if computation fails
-	 */
-	private double computeInfoGainRatio(Instances data, Attribute att) throws Exception {
-		double infoGain = computeInfoGain(data, att);
-		if (Utils.eq(infoGain, 0)) {
-			return 0.0;
-		}
-		
-		double splitInfo = computeSplitInfo(data, att);
-		return infoGain / splitInfo;
-	}
-	
-	/**
-	 * Computes information gain for an attribute.
-	 *
-	 * @param data
-	 *            the data for which info gain is to be computed
-	 * @param att
-	 *            the attribute
-	 * @return the information gain for the given attribute and data
-	 * @throws Exception
-	 *             if computation fails
-	 */
-	private double computeSplitInfo(Instances data, Attribute att) throws Exception {
-		
-		double total = data.numInstances();
-		double splitInfo = 0.0;
-		
-		// 根据属性划分数据集
-		Instances[] splitData = splitData(data, att);
-		
-		// 计算属性的分裂信息熵
-		for (int j = 0; j < att.numValues(); j++) {
-			if (splitData[j].numInstances() > 0) {
-				double num = splitData[j].numInstances();
-				double probability = num / total;
-				splitInfo -= probability * Utils.log2(probability);
-			}
-		}
-		
-		return splitInfo;
-	}
-
-	/**
-	 * Computes information gain for an attribute.
-	 *
-	 * @param data
-	 *            the data for which info gain is to be computed
-	 * @param att
-	 *            the attribute
-	 * @return the information gain for the given attribute and data
-	 * @throws Exception
-	 *             if computation fails
-	 */
-	private double computeInfoGain(Instances data, Attribute att) throws Exception {
-		
-//		double total = data.numInstances();
-//		double splitInfo = 0.0;
-		
-		// TODO 2.1 计算训练集的熵
-		double infoGain = computeEntropy(data);
-		
-		// TODO 2.2 根据属性的属性值划分训练集成多个子数据集
-		Instances[] splitData = splitData(data, att);
-		
-		// TODO 2.3 遍历每个属性值对应的数据集计算熵
-		for (int j = 0; j < att.numValues(); j++) {
-			if (splitData[j].numInstances() > 0) {
-				// TODO 2.4 计算信息增益
-				infoGain -= ((double) splitData[j].numInstances() / (double) data.numInstances()) * computeEntropy(splitData[j]);
-				
-//				double num = splitData[j].numInstances();
-//				double probability = num / total;
-//				splitInfo -= probability * Utils.log2(probability);
-			}
-		}
-		
-		return infoGain;
-	}
-	
-	/**
-	 * Computes the entropy of a dataset.
+	 * Generates the classifier.
 	 * 
-	 * @param data
-	 *            the data for which entropy is to be computed
-	 * @return the entropy of the data's class distribution
+	 * @param instances
+	 *            the data to train the classifier with
 	 * @throws Exception
-	 *             if computation fails
+	 *             if classifier can't be built successfully
 	 */
-	private double computeEntropy(Instances data) throws Exception {
+	@Override
+	public void buildClassifier(Instances instances) throws Exception {
+		ModelSelection modSelection;
 
-		// 计算每一种类别的个数
-		double[] classCounts = new double[data.numClasses()];
-		Enumeration<Instance> instEnum = data.enumerateInstances();
-		while (instEnum.hasMoreElements()) {
-			Instance inst = (Instance) instEnum.nextElement();
-			classCounts[(int) inst.classValue()]++;
-		}
-		
-		// 计算数据集的熵
-		double entropy = 0;
-		for (int j = 0; j < data.numClasses(); j++) {
-			if (classCounts[j] > 0) {
-				entropy -= classCounts[j] * Utils.log2(classCounts[j]);
-			}
-		}
-		entropy /= (double) data.numInstances();
-		return entropy + Utils.log2(data.numInstances());
-	}
-
-	/**
-	 * Splits a dataset according to the values of a nominal attribute.
-	 *
-	 * @param data
-	 *            the data which is to be split
-	 * @param att
-	 *            the attribute to be used for splitting
-	 * @return the sets of instances produced by the split
-	 */
-	private Instances[] splitData(Instances data, Attribute att) {
-
-		Instances[] splitData = new Instances[att.numValues()];
-		for (int j = 0; j < att.numValues(); j++) {
-			splitData[j] = new Instances(data, data.numInstances());
-		}
-		Enumeration<Instance> instEnum = data.enumerateInstances();
-		while (instEnum.hasMoreElements()) {
-			Instance inst = (Instance) instEnum.nextElement();
-			splitData[(int) inst.value(att)].add(inst);
-		}
-		for (int i = 0; i < splitData.length; i++) {
-			splitData[i].compactify();
-		}
-		return splitData;
-	}
-
-	/**
-	 * Outputs a tree at a certain level.
-	 *
-	 * @param level
-	 *            the level at which the tree is to be printed
-	 * @return the tree as string at the given level
-	 */
-	private String toString(int level) {
-
-		StringBuffer text = new StringBuffer();
-
-		if (m_Attribute == null) {
-			if (Utils.isMissingValue(m_ClassValue)) {
-				text.append(": null");
-			} else {
-				text.append(": " + m_ClassAttribute.value((int) m_ClassValue));
-			}
+		// 1.根据类别是否为二分类来选择决策树模型
+		if (m_binarySplits) {	
+//			System.out.println("STEP1 ==> 选择决策树模型  ==> BinC45ModelSelection");
+			modSelection = new BinC45ModelSelection(m_minNumObj, instances,
+					m_useMDLcorrection, m_doNotMakeSplitPointActualValue);
 		} else {
-			for (int j = 0; j < m_Attribute.numValues(); j++) {
-				text.append("\n");
-				for (int i = 0; i < level; i++) {
-					text.append("|  ");
-				}
-				text.append(m_Attribute.name() + " = " + m_Attribute.value(j));
-				text.append(m_Successors[j].toString(level + 1));
-			}
+//			System.out.println("STEP1 ==> 选择决策树模型  ==> C45ModelSelection");
+			modSelection = new C45ModelSelection(m_minNumObj, instances,
+					m_useMDLcorrection, m_doNotMakeSplitPointActualValue);
 		}
-		return text.toString();
+
+		// 2.根据是否需要降低错误率来选择后剪枝策略
+		if (!m_reducedErrorPruning) {
+//			System.out.println("STEP2 ==> 选择后剪枝策略  ==> C45PruneableClassifierTree");
+			m_root = new C45PruneableClassifierTree(modSelection, !m_unpruned,
+					m_CF, m_subtreeRaising, !m_noCleanup, m_collapseTree);
+		} else {
+//			System.out.println("STEP2 ==> 选择后剪枝策略  ==> PruneableClassifierTree");
+			m_root = new PruneableClassifierTree(modSelection, !m_unpruned,
+					m_numFolds, !m_noCleanup, m_Seed);
+		}
+
+		// 3.创建分类器
+//		System.out.println("STEP3 ==> START 调用" + m_root.getClass().getName() + "类中buildClassifier()方法 ==> 创建分类器");
+		m_root.buildClassifier(instances);
+//		System.out.println("STEP3 ==> END 返回" + getClass().getName() + "==> buildClassifier()");
+
+		// 4.根据分类标准清空训练集
+//		System.out.println("STEP4 ==> " + "清空训练集");
+		if (m_binarySplits) {
+			((BinC45ModelSelection) modSelection).cleanup();
+		} else {
+			((C45ModelSelection) modSelection).cleanup();
+		}
 	}
 
 	/**
-	 * Adds this tree recursively to the buffer.
+	 * Classifies an instance.
 	 * 
-	 * @param id
-	 *            the unqiue id for the method
-	 * @param buffer
-	 *            the buffer to add the source code to
-	 * @return the last ID being used
+	 * @param instance
+	 *            the instance to classify
+	 * @return the classification for the instance
+	 * @throws Exception
+	 *             if instance can't be classified successfully
+	 */
+	@Override
+	public double classifyInstance(Instance instance) throws Exception {
+
+		return m_root.classifyInstance(instance);
+	}
+
+	/**
+	 * Returns class probabilities for an instance.
+	 * 
+	 * @param instance
+	 *            the instance to calculate the class probabilities for
+	 * @return the class probabilities
+	 * @throws Exception
+	 *             if distribution can't be computed successfully
+	 */
+	@Override
+	public final double[] distributionForInstance(Instance instance)
+			throws Exception {
+
+		return m_root.distributionForInstance(instance, m_useLaplace);
+	}
+
+	/**
+	 * Returns the type of graph this classifier represents.
+	 * 
+	 * @return Drawable.TREE
+	 */
+	@Override
+	public int graphType() {
+		return Drawable.TREE;
+	}
+
+	/**
+	 * Returns graph describing the tree.
+	 * 
+	 * @return the graph describing the tree
+	 * @throws Exception
+	 *             if graph can't be computed
+	 */
+	@Override
+	public String graph() throws Exception {
+
+		return m_root.graph();
+	}
+
+	/**
+	 * Returns tree in prefix order.
+	 * 
+	 * @return the tree in prefix order
 	 * @throws Exception
 	 *             if something goes wrong
 	 */
-	protected int toSource(int id, StringBuffer buffer) throws Exception {
-		int result;
-		int i;
-		int newID;
-		StringBuffer[] subBuffers;
+	@Override
+	public String prefix() throws Exception {
 
-		buffer.append("\n");
-		buffer.append("  protected static double node" + id
-				+ "(Object[] i) {\n");
-
-		// leaf?
-		if (m_Attribute == null) {
-			result = id;
-			if (Double.isNaN(m_ClassValue)) {
-				buffer.append("    return Double.NaN;");
-			} else {
-				buffer.append("    return " + m_ClassValue + ";");
-			}
-			if (m_ClassAttribute != null) {
-				buffer.append(" // "
-						+ m_ClassAttribute.value((int) m_ClassValue));
-			}
-			buffer.append("\n");
-			buffer.append("  }\n");
-		} else {
-			buffer.append("    checkMissing(i, " + m_Attribute.index()
-					+ ");\n\n");
-			buffer.append("    // " + m_Attribute.name() + "\n");
-
-			// subtree calls
-			subBuffers = new StringBuffer[m_Attribute.numValues()];
-			newID = id;
-			for (i = 0; i < m_Attribute.numValues(); i++) {
-				newID++;
-
-				buffer.append("    ");
-				if (i > 0) {
-					buffer.append("else ");
-				}
-				buffer.append("if (((String) i[" + m_Attribute.index()
-						+ "]).equals(\"" + m_Attribute.value(i) + "\"))\n");
-				buffer.append("      return node" + newID + "(i);\n");
-
-				subBuffers[i] = new StringBuffer();
-				newID = m_Successors[i].toSource(newID, subBuffers[i]);
-			}
-			buffer.append("    else\n");
-			buffer.append("      throw new IllegalArgumentException(\"Value '\" + i["
-					+ m_Attribute.index() + "] + \"' is not allowed!\");\n");
-			buffer.append("  }\n");
-
-			// output subtree code
-			for (i = 0; i < m_Attribute.numValues(); i++) {
-				buffer.append(subBuffers[i].toString());
-			}
-			subBuffers = null;
-
-			result = newID;
-		}
-
-		return result;
+		return m_root.prefix();
 	}
 
 	/**
-	 * Returns a string that describes the classifier as source. The classifier
-	 * will be contained in a class with the given name (there may be auxiliary
-	 * classes), and will contain a method with the signature:
+	 * Returns tree as an if-then statement.
+	 * 
+	 * @param className
+	 *            the name of the Java class
+	 * @return the tree as a Java if-then type statement
+	 * @throws Exception
+	 *             if something goes wrong
+	 */
+	@Override
+	public String toSource(String className) throws Exception {
+
+		StringBuffer[] source = m_root.toSource(className);
+		return "class " + className + " {\n\n"
+				+ "  public static double classify(Object[] i)\n"
+				+ "    throws Exception {\n\n" + "    double p = Double.NaN;\n"
+				+ source[0] // Assignment code
+				+ "    return p;\n" + "  }\n" + source[1] // Support code
+				+ "}\n";
+	}
+
+	/**
+	 * Returns an enumeration describing the available options.
+	 * 
+	 * Valid options are:
+	 * <p>
+	 * 
+	 * -U <br>
+	 * Use unpruned tree.
+	 * <p>
+	 * 
+	 * -C confidence <br>
+	 * Set confidence threshold for pruning. (Default: 0.25)
+	 * <p>
+	 * 
+	 * -M number <br>
+	 * Set minimum number of instances per leaf. (Default: 2)
+	 * <p>
+	 * 
+	 * -R <br>
+	 * Use reduced error pruning. No subtree raising is performed.
+	 * <p>
+	 * 
+	 * -N number <br>
+	 * Set number of folds for reduced error pruning. One fold is used as the
+	 * pruning set. (Default: 3)
+	 * <p>
+	 * 
+	 * -B <br>
+	 * Use binary splits for nominal attributes.
+	 * <p>
+	 * 
+	 * -S <br>
+	 * Don't perform subtree raising.
+	 * <p>
+	 * 
+	 * -L <br>
+	 * Do not clean up after the tree has been built.
+	 * 
+	 * -A <br>
+	 * If set, Laplace smoothing is used for predicted probabilites.
+	 * <p>
+	 * 
+	 * -Q <br>
+	 * The seed for reduced-error pruning.
+	 * <p>
+	 * 
+	 * @return an enumeration of all the available options.
+	 */
+	@Override
+	public Enumeration<Option> listOptions() {
+
+		Vector<Option> newVector = new Vector<Option>(13);
+
+		newVector.addElement(new Option("\tUse unpruned tree.", "U", 0, "-U"));
+		newVector
+				.addElement(new Option("\tDo not collapse tree.", "O", 0, "-O"));
+		newVector
+				.addElement(new Option(
+						"\tSet confidence threshold for pruning.\n"
+								+ "\t(default 0.25)", "C", 1,
+						"-C <pruning confidence>"));
+		newVector.addElement(new Option(
+				"\tSet minimum number of instances per leaf.\n"
+						+ "\t(default 2)", "M", 1,
+				"-M <minimum number of instances>"));
+		newVector.addElement(new Option("\tUse reduced error pruning.", "R", 0,
+				"-R"));
+		newVector.addElement(new Option(
+				"\tSet number of folds for reduced error\n"
+						+ "\tpruning. One fold is used as pruning set.\n"
+						+ "\t(default 3)", "N", 1, "-N <number of folds>"));
+		newVector.addElement(new Option("\tUse binary splits only.", "B", 0,
+				"-B"));
+		newVector.addElement(new Option("\tDo not perform subtree raising.",
+				"S", 0, "-S"));
+		newVector.addElement(new Option(
+				"\tDo not clean up after the tree has been built.", "L", 0,
+				"-L"));
+		newVector.addElement(new Option(
+				"\tLaplace smoothing for predicted probabilities.", "A", 0,
+				"-A"));
+		newVector
+				.addElement(new Option(
+						"\tDo not use MDL correction for info gain on numeric attributes.",
+						"J", 0, "-J"));
+		newVector.addElement(new Option(
+				"\tSeed for random data shuffling (default 1).", "Q", 1,
+				"-Q <seed>"));
+		newVector.addElement(new Option(
+				"\tDo not make split point actual value.",
+				"-doNotMakeSplitPointActualValue", 0,
+				"-doNotMakeSplitPointActualValue"));
+
+		newVector.addAll(Collections.list(super.listOptions()));
+
+		return newVector.elements();
+	}
+
+	/**
+	 * Parses a given list of options.
+	 * 
+	 * <!-- options-start --> Valid options are:
+	 * <p/>
 	 * 
 	 * <pre>
-	 * <code>
-	 * public static double classify(Object[] i);
-	 * </code>
+	 * -U
+	 *  Use unpruned tree.
 	 * </pre>
 	 * 
-	 * where the array <code>i</code> contains elements that are either Double,
-	 * String, with missing values represented as null. The generated code is
-	 * public domain and comes with no warranty. <br/>
-	 * Note: works only if class attribute is the last attribute in the dataset.
-	 *
-	 * @param className
-	 *            the name that should be given to the source class.
-	 * @return the object source described by a string
+	 * <pre>
+	 * -O
+	 *  Do not collapse tree.
+	 * </pre>
+	 * 
+	 * <pre>
+	 * -C &lt;pruning confidence&gt;
+	 *  Set confidence threshold for pruning.
+	 *  (default 0.25)
+	 * </pre>
+	 * 
+	 * <pre>
+	 * -M &lt;minimum number of instances&gt;
+	 *  Set minimum number of instances per leaf.
+	 *  (default 2)
+	 * </pre>
+	 * 
+	 * <pre>
+	 * -R
+	 *  Use reduced error pruning.
+	 * </pre>
+	 * 
+	 * <pre>
+	 * -N &lt;number of folds&gt;
+	 *  Set number of folds for reduced error
+	 *  pruning. One fold is used as pruning set.
+	 *  (default 3)
+	 * </pre>
+	 * 
+	 * <pre>
+	 * -B
+	 *  Use binary splits only.
+	 * </pre>
+	 * 
+	 * <pre>
+	 * -S
+	 *  Don't perform subtree raising.
+	 * </pre>
+	 * 
+	 * <pre>
+	 * -L
+	 *  Do not clean up after the tree has been built.
+	 * </pre>
+	 * 
+	 * <pre>
+	 * -A
+	 *  Laplace smoothing for predicted probabilities.
+	 * </pre>
+	 * 
+	 * <pre>
+	 * -J
+	 *  Do not use MDL correction for info gain on numeric attributes.
+	 * </pre>
+	 * 
+	 * <pre>
+	 * -Q &lt;seed&gt;
+	 *  Seed for random data shuffling (default 1).
+	 * </pre>
+	 * 
+	 * <pre>
+	 * -doNotMakeSplitPointActualValue
+	 *  Do not make split point actual value.
+	 * </pre>
+	 * 
+	 * <!-- options-end -->
+	 * 
+	 * @param options
+	 *            the list of options as an array of strings
 	 * @throws Exception
-	 *             if the source can't be computed
+	 *             if an option is not supported
 	 */
-	public String toSource(String className) throws Exception {
-		StringBuffer result;
-		int id;
+	@Override
+	public void setOptions(String[] options) throws Exception {
 
-		result = new StringBuffer();
+		// Other options
+		String minNumString = Utils.getOption('M', options);
+		if (minNumString.length() != 0) {
+			m_minNumObj = Integer.parseInt(minNumString);
+		} else {
+			m_minNumObj = 2;
+		}
+		m_binarySplits = Utils.getFlag('B', options);
+		m_useLaplace = Utils.getFlag('A', options);
+		m_useMDLcorrection = !Utils.getFlag('J', options);
 
-		result.append("class " + className + " {\n");
-		result.append("  private static void checkMissing(Object[] i, int index) {\n");
-		result.append("    if (i[index] == null)\n");
-		result.append("      throw new IllegalArgumentException(\"Null values "
-				+ "are not allowed!\");\n");
-		result.append("  }\n\n");
-		result.append("  public static double classify(Object[] i) {\n");
-		id = 0;
-		result.append("    return node" + id + "(i);\n");
-		result.append("  }\n");
-		toSource(id, result);
-		result.append("}\n");
+		// Pruning options
+		m_unpruned = Utils.getFlag('U', options);
+		m_collapseTree = !Utils.getFlag('O', options);
+		m_subtreeRaising = !Utils.getFlag('S', options);
+		m_noCleanup = Utils.getFlag('L', options);
+		m_doNotMakeSplitPointActualValue = Utils.getFlag(
+				"doNotMakeSplitPointActualValue", options);
+		if ((m_unpruned) && (!m_subtreeRaising)) {
+			throw new Exception(
+					"Subtree raising doesn't need to be unset for unpruned tree!");
+		}
+		m_reducedErrorPruning = Utils.getFlag('R', options);
+		if ((m_unpruned) && (m_reducedErrorPruning)) {
+			throw new Exception(
+					"Unpruned tree and reduced error pruning can't be selected "
+							+ "simultaneously!");
+		}
+		String confidenceString = Utils.getOption('C', options);
+		if (confidenceString.length() != 0) {
+			if (m_reducedErrorPruning) {
+				throw new Exception(
+						"Setting the confidence doesn't make sense "
+								+ "for reduced error pruning.");
+			} else if (m_unpruned) {
+				throw new Exception(
+						"Doesn't make sense to change confidence for unpruned "
+								+ "tree!");
+			} else {
+				m_CF = (new Float(confidenceString)).floatValue();
+				if ((m_CF <= 0) || (m_CF >= 1)) {
+					throw new Exception(
+							"Confidence has to be greater than zero and smaller "
+									+ "than one!");
+				}
+			}
+		} else {
+			m_CF = 0.25f;
+		}
+		String numFoldsString = Utils.getOption('N', options);
+		if (numFoldsString.length() != 0) {
+			if (!m_reducedErrorPruning) {
+				throw new Exception("Setting the number of folds"
+						+ " doesn't make sense if"
+						+ " reduced error pruning is not selected.");
+			} else {
+				m_numFolds = Integer.parseInt(numFoldsString);
+			}
+		} else {
+			m_numFolds = 3;
+		}
+		String seedString = Utils.getOption('Q', options);
+		if (seedString.length() != 0) {
+			m_Seed = Integer.parseInt(seedString);
+		} else {
+			m_Seed = 1;
+		}
 
-		return result.toString();
+		super.setOptions(options);
+
+		Utils.checkForRemainingOptions(options);
+	}
+
+	/**
+	 * Gets the current settings of the Classifier.
+	 * 
+	 * @return an array of strings suitable for passing to setOptions
+	 */
+	@Override
+	public String[] getOptions() {
+
+		Vector<String> options = new Vector<String>();
+
+		if (m_noCleanup) {
+			options.add("-L");
+		}
+		if (!m_collapseTree) {
+			options.add("-O");
+		}
+		if (m_unpruned) {
+			options.add("-U");
+		} else {
+			if (!m_subtreeRaising) {
+				options.add("-S");
+			}
+			if (m_reducedErrorPruning) {
+				options.add("-R");
+				options.add("-N");
+				options.add("" + m_numFolds);
+				options.add("-Q");
+				options.add("" + m_Seed);
+			} else {
+				options.add("-C");
+				options.add("" + m_CF);
+			}
+		}
+		if (m_binarySplits) {
+			options.add("-B");
+		}
+		options.add("-M");
+		options.add("" + m_minNumObj);
+		if (m_useLaplace) {
+			options.add("-A");
+		}
+		if (!m_useMDLcorrection) {
+			options.add("-J");
+		}
+		if (m_doNotMakeSplitPointActualValue) {
+			options.add("-doNotMakeSplitPointActualValue");
+		}
+
+		Collections.addAll(options, super.getOptions());
+
+		return options.toArray(new String[0]);
+	}
+
+	/**
+	 * Returns the tip text for this property
+	 * 
+	 * @return tip text for this property suitable for displaying in the
+	 *         explorer/experimenter gui
+	 */
+	public String seedTipText() {
+		return "The seed used for randomizing the data "
+				+ "when reduced-error pruning is used.";
+	}
+
+	/**
+	 * Get the value of Seed.
+	 * 
+	 * @return Value of Seed.
+	 */
+	public int getSeed() {
+
+		return m_Seed;
+	}
+
+	/**
+	 * Set the value of Seed.
+	 * 
+	 * @param newSeed
+	 *            Value to assign to Seed.
+	 */
+	public void setSeed(int newSeed) {
+
+		m_Seed = newSeed;
+	}
+
+	/**
+	 * Returns the tip text for this property
+	 * 
+	 * @return tip text for this property suitable for displaying in the
+	 *         explorer/experimenter gui
+	 */
+	public String useLaplaceTipText() {
+		return "Whether counts at leaves are smoothed based on Laplace.";
+	}
+
+	/**
+	 * Get the value of useLaplace.
+	 * 
+	 * @return Value of useLaplace.
+	 */
+	public boolean getUseLaplace() {
+
+		return m_useLaplace;
+	}
+
+	/**
+	 * Set the value of useLaplace.
+	 * 
+	 * @param newuseLaplace
+	 *            Value to assign to useLaplace.
+	 */
+	public void setUseLaplace(boolean newuseLaplace) {
+
+		m_useLaplace = newuseLaplace;
+	}
+
+	/**
+	 * Returns the tip text for this property
+	 * 
+	 * @return tip text for this property suitable for displaying in the
+	 *         explorer/experimenter gui
+	 */
+	public String useMDLcorrectionTipText() {
+		return "Whether MDL correction is used when finding splits on numeric attributes.";
+	}
+
+	/**
+	 * Get the value of useMDLcorrection.
+	 * 
+	 * @return Value of useMDLcorrection.
+	 */
+	public boolean getUseMDLcorrection() {
+
+		return m_useMDLcorrection;
+	}
+
+	/**
+	 * Set the value of useMDLcorrection.
+	 * 
+	 * @param newuseMDLcorrection
+	 *            Value to assign to useMDLcorrection.
+	 */
+	public void setUseMDLcorrection(boolean newuseMDLcorrection) {
+
+		m_useMDLcorrection = newuseMDLcorrection;
+	}
+
+	/**
+	 * Returns a description of the classifier.
+	 * 
+	 * @return a description of the classifier
+	 */
+	@Override
+	public String toString() {
+
+		if (m_root == null) {
+			return "No classifier built";
+		}
+		if (m_unpruned) {
+			return "J48 unpruned tree\n------------------\n"
+					+ m_root.toString();
+		} else {
+			return "J48 pruned tree\n------------------\n" + m_root.toString();
+		}
+	}
+
+	/**
+	 * Returns a superconcise version of the model
+	 * 
+	 * @return a summary of the model
+	 */
+	@Override
+	public String toSummaryString() {
+
+		return "Number of leaves: " + m_root.numLeaves() + "\n"
+				+ "Size of the tree: " + m_root.numNodes() + "\n";
+	}
+
+	/**
+	 * Returns the size of the tree
+	 * 
+	 * @return the size of the tree
+	 */
+	public double measureTreeSize() {
+		return m_root.numNodes();
+	}
+
+	/**
+	 * Returns the number of leaves
+	 * 
+	 * @return the number of leaves
+	 */
+	public double measureNumLeaves() {
+		return m_root.numLeaves();
+	}
+
+	/**
+	 * Returns the number of rules (same as number of leaves)
+	 * 
+	 * @return the number of rules
+	 */
+	public double measureNumRules() {
+		return m_root.numLeaves();
+	}
+
+	/**
+	 * Returns an enumeration of the additional measure names
+	 * 
+	 * @return an enumeration of the measure names
+	 */
+	@Override
+	public Enumeration<String> enumerateMeasures() {
+		Vector<String> newVector = new Vector<String>(3);
+		newVector.addElement("measureTreeSize");
+		newVector.addElement("measureNumLeaves");
+		newVector.addElement("measureNumRules");
+		return newVector.elements();
+	}
+
+	/**
+	 * Returns the value of the named measure
+	 * 
+	 * @param additionalMeasureName
+	 *            the name of the measure to query for its value
+	 * @return the value of the named measure
+	 * @throws IllegalArgumentException
+	 *             if the named measure is not supported
+	 */
+	@Override
+	public double getMeasure(String additionalMeasureName) {
+		if (additionalMeasureName.compareToIgnoreCase("measureNumRules") == 0) {
+			return measureNumRules();
+		} else if (additionalMeasureName.compareToIgnoreCase("measureTreeSize") == 0) {
+			return measureTreeSize();
+		} else if (additionalMeasureName
+				.compareToIgnoreCase("measureNumLeaves") == 0) {
+			return measureNumLeaves();
+		} else {
+			throw new IllegalArgumentException(additionalMeasureName
+					+ " not supported (j48)");
+		}
+	}
+
+	/**
+	 * Returns the tip text for this property
+	 * 
+	 * @return tip text for this property suitable for displaying in the
+	 *         explorer/experimenter gui
+	 */
+	public String unprunedTipText() {
+		return "Whether pruning is performed.";
+	}
+
+	/**
+	 * Get the value of unpruned.
+	 * 
+	 * @return Value of unpruned.
+	 */
+	public boolean getUnpruned() {
+
+		return m_unpruned;
+	}
+
+	/**
+	 * Set the value of unpruned. Turns reduced-error pruning off if set.
+	 * 
+	 * @param v
+	 *            Value to assign to unpruned.
+	 */
+	public void setUnpruned(boolean v) {
+
+		if (v) {
+			m_reducedErrorPruning = false;
+		}
+		m_unpruned = v;
+	}
+
+	/**
+	 * Returns the tip text for this property
+	 * 
+	 * @return tip text for this property suitable for displaying in the
+	 *         explorer/experimenter gui
+	 */
+	public String collapseTreeTipText() {
+		return "Whether parts are removed that do not reduce training error.";
+	}
+
+	/**
+	 * Get the value of collapseTree.
+	 * 
+	 * @return Value of collapseTree.
+	 */
+	public boolean getCollapseTree() {
+
+		return m_collapseTree;
+	}
+
+	/**
+	 * Set the value of collapseTree.
+	 * 
+	 * @param v
+	 *            Value to assign to collapseTree.
+	 */
+	public void setCollapseTree(boolean v) {
+
+		m_collapseTree = v;
+	}
+
+	/**
+	 * Returns the tip text for this property
+	 * 
+	 * @return tip text for this property suitable for displaying in the
+	 *         explorer/experimenter gui
+	 */
+	public String confidenceFactorTipText() {
+		return "The confidence factor used for pruning (smaller values incur "
+				+ "more pruning).";
+	}
+
+	/**
+	 * Get the value of CF.
+	 * 
+	 * @return Value of CF.
+	 */
+	public float getConfidenceFactor() {
+
+		return m_CF;
+	}
+
+	/**
+	 * Set the value of CF.
+	 * 
+	 * @param v
+	 *            Value to assign to CF.
+	 */
+	public void setConfidenceFactor(float v) {
+
+		m_CF = v;
+	}
+
+	/**
+	 * Returns the tip text for this property
+	 * 
+	 * @return tip text for this property suitable for displaying in the
+	 *         explorer/experimenter gui
+	 */
+	public String minNumObjTipText() {
+		return "The minimum number of instances per leaf.";
+	}
+
+	/**
+	 * Get the value of minNumObj.
+	 * 
+	 * @return Value of minNumObj.
+	 */
+	public int getMinNumObj() {
+
+		return m_minNumObj;
+	}
+
+	/**
+	 * Set the value of minNumObj.
+	 * 
+	 * @param v
+	 *            Value to assign to minNumObj.
+	 */
+	public void setMinNumObj(int v) {
+
+		m_minNumObj = v;
+	}
+
+	/**
+	 * Returns the tip text for this property
+	 * 
+	 * @return tip text for this property suitable for displaying in the
+	 *         explorer/experimenter gui
+	 */
+	public String reducedErrorPruningTipText() {
+		return "Whether reduced-error pruning is used instead of C.4.5 pruning.";
+	}
+
+	/**
+	 * Get the value of reducedErrorPruning.
+	 * 
+	 * @return Value of reducedErrorPruning.
+	 */
+	public boolean getReducedErrorPruning() {
+
+		return m_reducedErrorPruning;
+	}
+
+	/**
+	 * Set the value of reducedErrorPruning. Turns unpruned trees off if set.
+	 * 
+	 * @param v
+	 *            Value to assign to reducedErrorPruning.
+	 */
+	public void setReducedErrorPruning(boolean v) {
+
+		if (v) {
+			m_unpruned = false;
+		}
+		m_reducedErrorPruning = v;
+	}
+
+	/**
+	 * Returns the tip text for this property
+	 * 
+	 * @return tip text for this property suitable for displaying in the
+	 *         explorer/experimenter gui
+	 */
+	public String numFoldsTipText() {
+		return "Determines the amount of data used for reduced-error pruning. "
+				+ " One fold is used for pruning, the rest for growing the tree.";
+	}
+
+	/**
+	 * Get the value of numFolds.
+	 * 
+	 * @return Value of numFolds.
+	 */
+	public int getNumFolds() {
+
+		return m_numFolds;
+	}
+
+	/**
+	 * Set the value of numFolds.
+	 * 
+	 * @param v
+	 *            Value to assign to numFolds.
+	 */
+	public void setNumFolds(int v) {
+
+		m_numFolds = v;
+	}
+
+	/**
+	 * Returns the tip text for this property
+	 * 
+	 * @return tip text for this property suitable for displaying in the
+	 *         explorer/experimenter gui
+	 */
+	public String binarySplitsTipText() {
+		return "Whether to use binary splits on nominal attributes when "
+				+ "building the trees.";
+	}
+
+	/**
+	 * Get the value of binarySplits.
+	 * 
+	 * @return Value of binarySplits.
+	 */
+	public boolean getBinarySplits() {
+
+		return m_binarySplits;
+	}
+
+	/**
+	 * Set the value of binarySplits.
+	 * 
+	 * @param v
+	 *            Value to assign to binarySplits.
+	 */
+	public void setBinarySplits(boolean v) {
+
+		m_binarySplits = v;
+	}
+
+	/**
+	 * Returns the tip text for this property
+	 * 
+	 * @return tip text for this property suitable for displaying in the
+	 *         explorer/experimenter gui
+	 */
+	public String subtreeRaisingTipText() {
+		return "Whether to consider the subtree raising operation when pruning.";
+	}
+
+	/**
+	 * Get the value of subtreeRaising.
+	 * 
+	 * @return Value of subtreeRaising.
+	 */
+	public boolean getSubtreeRaising() {
+
+		return m_subtreeRaising;
+	}
+
+	/**
+	 * Set the value of subtreeRaising.
+	 * 
+	 * @param v
+	 *            Value to assign to subtreeRaising.
+	 */
+	public void setSubtreeRaising(boolean v) {
+
+		m_subtreeRaising = v;
+	}
+
+	/**
+	 * Returns the tip text for this property
+	 * 
+	 * @return tip text for this property suitable for displaying in the
+	 *         explorer/experimenter gui
+	 */
+	public String saveInstanceDataTipText() {
+		return "Whether to save the training data for visualization.";
+	}
+
+	/**
+	 * Check whether instance data is to be saved.
+	 * 
+	 * @return true if instance data is saved
+	 */
+	public boolean getSaveInstanceData() {
+
+		return m_noCleanup;
+	}
+
+	/**
+	 * Set whether instance data is to be saved.
+	 * 
+	 * @param v
+	 *            true if instance data is to be saved
+	 */
+	public void setSaveInstanceData(boolean v) {
+
+		m_noCleanup = v;
+	}
+
+	/**
+	 * Returns the tip text for this property
+	 * 
+	 * @return tip text for this property suitable for displaying in the
+	 *         explorer/experimenter gui
+	 */
+	public String doNotMakeSplitPointActualValueTipText() {
+		return "If true, the split point is not relocated to an actual data value."
+				+ " This can yield substantial speed-ups for large datasets with numeric attributes.";
+	}
+
+	/**
+	 * Gets the value of doNotMakeSplitPointActualValue.
+	 * 
+	 * @return the value
+	 */
+	public boolean getDoNotMakeSplitPointActualValue() {
+		return m_doNotMakeSplitPointActualValue;
+	}
+
+	/**
+	 * Sets the value of doNotMakeSplitPointActualValue.
+	 * 
+	 * @param m_doNotMakeSplitPointActualValue
+	 *            the value to set
+	 */
+	public void setDoNotMakeSplitPointActualValue(
+			boolean m_doNotMakeSplitPointActualValue) {
+		this.m_doNotMakeSplitPointActualValue = m_doNotMakeSplitPointActualValue;
 	}
 
 	/**
@@ -599,27 +1224,45 @@ public class MyC45 extends AbstractClassifier implements
 	 * 
 	 * @return the revision
 	 */
+	@Override
 	public String getRevision() {
-		return RevisionUtils.extract("$Revision: 6404 $");
+		return RevisionUtils.extract("$Revision: 11194 $");
 	}
 
 	/**
-	 * Main method.
-	 *
-	 * @param args
-	 *            the options for the classifier
+	 * Builds the classifier to generate a partition.
 	 */
-	public static void main(String[] args) {
-		runClassifier(new MyC45(), args);
+	@Override
+	public void generatePartition(Instances data) throws Exception {
+
+		buildClassifier(data);
 	}
 
-	// @Override
-	// public int graphType() {
-	// return Drawable.TREE;
-	// }
-	//
-	// @Override
-	// public String graph() throws Exception {
-	// return m_root.graph();
-	// }
+	/**
+	 * Computes an array that indicates node membership.
+	 */
+	@Override
+	public double[] getMembershipValues(Instance inst) throws Exception {
+
+		return m_root.getMembershipValues(inst);
+	}
+
+	/**
+	 * Returns the number of elements in the partition.
+	 */
+	@Override
+	public int numElements() throws Exception {
+
+		return m_root.numNodes();
+	}
+
+	/**
+	 * Main method for testing this class
+	 * 
+	 * @param argv
+	 *            the commandline options
+	 */
+	public static void main(String[] argv) {
+		runClassifier(new MyC45(), argv);
+	}
 }

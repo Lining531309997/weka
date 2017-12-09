@@ -246,6 +246,11 @@ weka.classifiers.Classifier=\
  weka.classifiers.myalgorithm.MyC45,\
  weka.classifiers.myalgorithm.HuangC45,\
  weka.classifiers.myalgorithm.LinC45,\
+ weka.classifiers.myalgorithm.WangC45,\
+ weka.classifiers.myalgorithm.WangID3,\
+ weka.classifiers.myalgorithm.HuangAiHuiC45,\
+ weka.classifiers.myalgorithm.ChenC45,\
+ weka.classifiers.myalgorithm.C45,\
  weka.classifiers.rules.ZeroR
 
 # Lists the AbstractOutput classes I want to choose from

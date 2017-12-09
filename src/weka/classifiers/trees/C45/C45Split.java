@@ -19,7 +19,7 @@
  *
  */
 
-package weka.classifiers.trees.j48;
+package weka.classifiers.trees.C45;
 
 import java.util.Enumeration;
 

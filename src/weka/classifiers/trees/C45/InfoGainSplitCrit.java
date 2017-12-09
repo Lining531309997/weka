@@ -19,7 +19,8 @@
  *
  */
 
-package weka.classifiers.trees.j48;
+package weka.classifiers.trees.C45;
+
 
 import weka.core.RevisionUtils;
 import weka.core.Utils;
@@ -65,29 +66,30 @@ public final class InfoGainSplitCrit extends EntropyBasedSplitCrit {
    */
   public final double splitCritValue(Distribution bags, double totalNoInst) {
 
-    double numerator;
-    double noUnknown;
-    double unknownRate;
-    
-    // 获取去除当前属性数据集后的权重
-    noUnknown = totalNoInst - bags.total();
-    
-    // 计算除去当前属性数据集后权重在总数据集占的比例
-    unknownRate = noUnknown / totalNoInst;
-    
-    // entropy(S) - entropy(S,A)
-    numerator = (oldEnt(bags) - newEnt(bags));
-    numerator = (1 - unknownRate) * numerator;
-
-    // Splits with no gain are useless.
-    if (Utils.eq(numerator, 0)) {
-      return 0;
-    }
-
-//    System.out.println("Entropy(S) ==> " + (1 - unknownRate) * oldEnt(bags) / bags.total());
-//    System.out.println("Entropy(S,A) ==> " + (1 - unknownRate) * newEnt(bags) / bags.total());
-//    System.out.println("InfoGain(S,A) ====> " + numerator / bags.total());
-    return numerator / bags.total();
+//	    double numerator;
+////	    double noUnknown;
+////	    double unknownRate;
+//	    
+//	    // 获取去除当前属性数据集后的权重
+////	    noUnknown = totalNoInst - bags.total();
+//	    
+//	    // 计算除去当前属性数据集后权重在总数据集占的比例
+////	    unknownRate = noUnknown / totalNoInst;
+//	    
+//	    // entropy(S) - entropy(S,A)
+//	    numerator = (oldEnt(bags, totalNoInst) - newEnt(bags, totalNoInst));
+////	    numerator = (1 - unknownRate) * numerator;
+//
+//	    System.out.println("InfoGain(S,A) ====> " + numerator);
+//	    // Splits with no gain are useless.
+//	    if (Utils.eq(numerator, 0)) {
+//	      return 0;
+//	    }
+//	    return numerator;
+//	    // ---------------------------------------------  
+	  double infoGain = 0;
+	  infoGain = (oldEnt(bags) - newEnt(bags));
+	  return infoGain;
   }
 
   /**

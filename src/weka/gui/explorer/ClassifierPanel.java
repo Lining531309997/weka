@@ -1470,8 +1470,9 @@ public class ClassifierPanel extends AbstractPerspective implements
                 .append("=== Classifier model (full training set) ===\n\n");
               outBuff.append(classifier.toString() + "\n");
               outBuff.append("\nTime taken to build model: "
-                + Utils.doubleToString(trainTimeElapsed / 1000.0, 2)
-                + " seconds\n\n");
+            		  + trainTimeElapsed + " milliseconds\n\n");
+//                + Utils.doubleToString(trainTimeElapsed / 1000.0, 2)
+//                + " seconds\n\n");
               m_History.updateResult(name);
               if (classifier instanceof Drawable) {
                 grph = null;

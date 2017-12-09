@@ -27,12 +27,12 @@ import java.util.Vector;
 
 import weka.classifiers.AbstractClassifier;
 import weka.classifiers.Sourcable;
-import weka.classifiers.trees.C45.Huang.BinC45ModelSelection;
-import weka.classifiers.trees.C45.Huang.C45ModelSelection;
-import weka.classifiers.trees.C45.Huang.C45PruneableClassifierTree;
-import weka.classifiers.trees.C45.Huang.ClassifierTree;
-import weka.classifiers.trees.C45.Huang.ModelSelection;
-import weka.classifiers.trees.C45.Huang.PruneableClassifierTree;
+import weka.classifiers.trees.C45.BinC45ModelSelection;
+import weka.classifiers.trees.C45.C45ModelSelection;
+import weka.classifiers.trees.C45.C45PruneableClassifierTree;
+import weka.classifiers.trees.C45.ClassifierTree;
+import weka.classifiers.trees.C45.ModelSelection;
+import weka.classifiers.trees.C45.PruneableClassifierTree;
 import weka.core.AdditionalMeasureProducer;
 import weka.core.Capabilities;
 import weka.core.Capabilities.Capability;
@@ -152,7 +152,7 @@ import weka.core.WeightedInstancesHandler;
  * @author Eibe Frank (eibe@cs.waikato.ac.nz)
  * @version $Revision: 11194 $
  */
-public class HuangC45 extends AbstractClassifier implements OptionHandler,
+public class C45 extends AbstractClassifier implements OptionHandler,
 		Drawable, Matchable, Sourcable, WeightedInstancesHandler, Summarizable,
 		AdditionalMeasureProducer, TechnicalInformationHandler,
 		PartitionGenerator {
@@ -275,30 +275,38 @@ public class HuangC45 extends AbstractClassifier implements OptionHandler,
 	 */
 	@Override
 	public void buildClassifier(Instances instances) throws Exception {
+//		System.out.println("==========> " + getClass().getName() + "==> buildClassifier()");
 		ModelSelection modSelection;
 
 		// 1.根据类别是否为二分类来选择决策树模型
 		if (m_binarySplits) {	
+//			System.out.println("STEP1 ==> 选择决策树模型  ==> BinC45ModelSelection");
 			modSelection = new BinC45ModelSelection(m_minNumObj, instances,
 					m_useMDLcorrection, m_doNotMakeSplitPointActualValue);
 		} else {
+//			System.out.println("STEP1 ==> 选择决策树模型  ==> C45ModelSelection");
 			modSelection = new C45ModelSelection(m_minNumObj, instances,
 					m_useMDLcorrection, m_doNotMakeSplitPointActualValue);
 		}
 
 		// 2.根据是否需要降低错误率来选择后剪枝策略
 		if (!m_reducedErrorPruning) {
+//			System.out.println("STEP2 ==> 选择后剪枝策略  ==> C45PruneableClassifierTree");
 			m_root = new C45PruneableClassifierTree(modSelection, !m_unpruned,
 					m_CF, m_subtreeRaising, !m_noCleanup, m_collapseTree);
 		} else {
+//			System.out.println("STEP2 ==> 选择后剪枝策略  ==> PruneableClassifierTree");
 			m_root = new PruneableClassifierTree(modSelection, !m_unpruned,
 					m_numFolds, !m_noCleanup, m_Seed);
 		}
 
-		// TODO 3.创建分类器
+		// 3.创建分类器
+//		System.out.println("STEP3 ==> START 调用" + m_root.getClass().getName() + "类中buildClassifier()方法 ==> 创建分类器");
 		m_root.buildClassifier(instances);
+//		System.out.println("STEP3 ==> END 返回" + getClass().getName() + "==> buildClassifier()");
 
 		// 4.根据分类标准清空训练集
+//		System.out.println("STEP4 ==> " + "清空训练集");
 		if (m_binarySplits) {
 			((BinC45ModelSelection) modSelection).cleanup();
 		} else {
@@ -1256,6 +1264,6 @@ public class HuangC45 extends AbstractClassifier implements OptionHandler,
 	 *            the commandline options
 	 */
 	public static void main(String[] argv) {
-		runClassifier(new HuangC45(), argv);
+		runClassifier(new C45(), argv);
 	}
 }

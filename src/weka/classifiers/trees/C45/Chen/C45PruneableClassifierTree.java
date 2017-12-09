@@ -19,7 +19,7 @@
  *
  */
 
-package weka.classifiers.trees.j48;
+package weka.classifiers.trees.C45.Chen;
 
 import weka.core.Capabilities;
 import weka.core.Capabilities.Capability;

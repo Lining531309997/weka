@@ -19,7 +19,7 @@
  *
  */
 
-package weka.classifiers.trees.j48;
+package weka.classifiers.trees.C45.LiNing;
 
 import java.util.Enumeration;
 
@@ -111,7 +111,7 @@ public class C45Split extends ClassifierSplitModel {
     if (trainInstances.attribute(m_attIndex).isNominal()) {
       m_complexityIndex = trainInstances.attribute(m_attIndex).numValues();
       m_index = m_complexityIndex;
-      // TODO 5.处理分裂属性
+      // 5.处理分裂属性
 //      System.out.println("STEP3.2.1.3.1 ==> 处理离散型属性");
       handleEnumeratedAttribute(trainInstances);
     } else {

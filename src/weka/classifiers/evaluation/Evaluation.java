@@ -1646,7 +1646,7 @@ public class Evaluation implements Summarizable, RevisionHandler, Serializable {
       } else {
         if (classificationOutput == null) {
           text.append("\nTime taken to build model: "
-            + Utils.doubleToString(trainTimeElapsed / 1000.0, 2) + " seconds");
+          + Utils.doubleToString(trainTimeElapsed / 1000.0, 2) + " seconds");
 
           if (splitPercentage > 0) {
             text.append("\nTime taken to test model on training split: ");

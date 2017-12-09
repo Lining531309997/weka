@@ -19,7 +19,7 @@
  *
  */
 
-package weka.classifiers.trees.j48;
+package weka.classifiers.trees.C45.LiNing;
 
 import weka.core.Capabilities;
 import weka.core.Capabilities.Capability;
@@ -126,24 +126,24 @@ public class C45PruneableClassifierTree extends ClassifierTree {
 		data = new Instances(data);
 		data.deleteWithMissingClass();
 
-		// TODO 3.2 调用基类ClassifierTree中buildTree()方法 ==> 创建决策树
+		// 3.2 调用基类ClassifierTree中buildTree()方法 ==> 创建决策树
 //		System.out.println("STEP3.2 ==> START调用基类ClassifierTree中buildTree()方法 ==> 创建决策树");
 		buildTree(data, m_subtreeRaising || !m_cleanup);
 //		System.out.println("STEP3.2 END 返回" + getClass().getName() + "==> buildClassifier()");
 
-		// TODO 3.3 对比合并树 前后的错误率，不增加则合并。并递归处理孩子节点
+		// 3.3 对比合并树 前后的错误率，不增加则合并。并递归处理孩子节点
 		if (m_collapseTheTree) {
 //			System.out.println("STEP3.3 ==> 合并树");
 			collapse();
 		}
 
-		// TODO 3.4 剪枝
+		// 3.4 剪枝
 		if (m_pruneTheTree) {
 //			System.out.println("STEP3.4 ==> 决策树剪枝");
 			prune();
 		}
 
-		// TODO 3.5 清理内存
+		// 3.5 清理内存
 		if (m_cleanup) {
 //			System.out.println("STEP3.5 ==> 决策树清理内存");
 			cleanup(new Instances(data, 0));

@@ -19,7 +19,7 @@
  *
  */
 
-package weka.classifiers.trees.j48;
+package weka.classifiers.trees.C45.LiNing;
 
 import java.util.Enumeration;
 
@@ -89,17 +89,17 @@ public class C45ModelSelection extends ModelSelection {
 	@Override
 	public final ClassifierSplitModel selectModel(Instances data) {
 
-		double minResult; // 最小的信息增益率
-		C45Split[] currentModel; // 存放所有未分类属性产生的模型
-		C45Split bestModel = null; // 目前为止的最好模型
-		NoSplit noSplitModel = null; // 代表不用分的模型
-		double averageInfoGain = 0; // 各模型(currentModel)的平均信息增益
-		int validModels = 0; // 是否存在有效模型
-		boolean multiVal = true; // 是否具有多值
+		double minResult; 				// 最小的信息增益率
+		C45Split[] currentModel; 		// 存放所有未分类属性产生的模型
+		C45Split bestModel = null; 		// 目前为止的最好模型
+		NoSplit noSplitModel = null; 	// 代表不用分的模型
+		double averageInfoGain = 0; 	// 各模型(currentModel)的平均信息增益
+		int validModels = 0; 			// 是否存在有效模型
+		boolean multiVal = true; 		// 是否具有多值
 		Distribution checkDistribution; // 训练数据集的分布
-		Attribute attribute; // 属性列集合
-		double sumOfWeights; // 训练数据集的weight的和
-		int i; // 循环变量
+		Attribute attribute; 			// 属性列集合
+		double sumOfWeights; 			// 训练数据集的weight的和
+		int i; 							// 循环变量
 
 		try {
 
@@ -191,6 +191,7 @@ public class C45ModelSelection extends ModelSelection {
 			for (i = 0; i < data.numAttributes(); i++) {
 				if ((i != (data).classIndex())
 						&& (currentModel[i].checkModel())) {
+//					System.out.println(i + " ==> 计算最佳分裂属性 ==> " + (data).classIndex() + " ==> " + (currentModel[i].checkModel()));
 					// Use 1E-3 here to get a closer approximation to the
 					// original
 					// implementation.
@@ -216,16 +217,6 @@ public class C45ModelSelection extends ModelSelection {
 			// Set the split point analogue to C45 if attribute numeric.
 			if ((m_allData != null) && (!m_doNotMakeSplitPointActualValue)) {
 				bestModel.setSplitPoint(m_allData);
-			}
-//			System.out.println("--------------------");
-//			System.out.println("最佳分裂属性 ==> " + data.get(0).attribute(bestModel.m_attIndex));
-//			System.out.println("--------------------");
-			if (data.numInstances() > 2000) {
-				for (int i1 = 0; i1 < data.numInstances(); i1++) {
-					for (int j = 0; j < data.numInstances(); j++) {
-						i1++;
-					}
-				}
 			}
 			return bestModel;
 		} catch (Exception e) {

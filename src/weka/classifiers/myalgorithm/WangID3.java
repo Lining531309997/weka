@@ -80,14 +80,14 @@ import weka.core.Utils;
  * @author Eibe Frank (eibe@cs.waikato.ac.nz)
  * @version $Revision: 6404 $
  */
-public class MyJ48 extends AbstractClassifier implements
+public class WangID3 extends AbstractClassifier implements
 		TechnicalInformationHandler, Sourcable {
 
 	/** for serialization */
 	static final long serialVersionUID = -2693678647096322561L;
 
 	/** The node's successors. */
-	private MyJ48[] m_Successors;
+	private WangID3[] m_Successors;
 
 	/** Attribute used for splitting. */
 	private Attribute m_Attribute;
@@ -100,7 +100,7 @@ public class MyJ48 extends AbstractClassifier implements
 
 	/** Class attribute of dataset. */
 	private Attribute m_ClassAttribute;
-	
+
 	/**
 	 * Returns a string describing the classifier.
 	 * 
@@ -176,7 +176,6 @@ public class MyJ48 extends AbstractClassifier implements
 		data = new Instances(data);
 		data.deleteWithMissingClass();
 
-		// TODO 1.创建决策树
 		makeTree(data);
 	}
 
@@ -197,23 +196,18 @@ public class MyJ48 extends AbstractClassifier implements
 			m_Distribution = new double[data.numClasses()];
 			return;
 		}
-		
+
 		// Compute attribute with maximum information gain.
 		double[] infoGains = new double[data.numAttributes()];
 		Enumeration<Attribute> attEnum = data.enumerateAttributes();
 		while (attEnum.hasMoreElements()) {
 			Attribute att = (Attribute) attEnum.nextElement();
-			// TODO 2.计算信息增益率
-			infoGains[att.index()] = computeInfoGainRatio(data, att);
-//			infoGains[att.index()] = computeSplitInfo(data, att);
+			infoGains[att.index()] = computeInfoGain(data, att);
 		}
-		
-		// TODO 3.获取最大信息增益得属性
 		m_Attribute = data.attribute(Utils.maxIndex(infoGains));
-		
+
 		// Make leaf if information gain is zero.
 		// Otherwise create successors.
-		// TODO 4.判断叶子节点与分支
 		if (Utils.eq(infoGains[m_Attribute.index()], 0)) {
 			m_Attribute = null;
 			m_Distribution = new double[data.numClasses()];
@@ -223,18 +217,13 @@ public class MyJ48 extends AbstractClassifier implements
 				m_Distribution[(int) inst.classValue()]++;
 			}
 			Utils.normalize(m_Distribution);
-			// 叶子节点的类别值
 			m_ClassValue = Utils.maxIndex(m_Distribution);
 			m_ClassAttribute = data.classAttribute();
 		} else {
-			// TODO 5.根据最大信息增益的属性划分数据集
 			Instances[] splitData = splitData(data, m_Attribute);
-			
-			// TODO 6.根据最大信息增益的属性创建分支
-			m_Successors = new MyJ48[m_Attribute.numValues()];
+			m_Successors = new WangID3[m_Attribute.numValues()];
 			for (int j = 0; j < m_Attribute.numValues(); j++) {
-				m_Successors[j] = new MyJ48();
-				// TODO 7.递归创建决策树的子树
+				m_Successors[j] = new WangID3();
 				m_Successors[j].makeTree(splitData[j]);
 			}
 		}
@@ -312,82 +301,41 @@ public class MyJ48 extends AbstractClassifier implements
 	 * @throws Exception
 	 *             if computation fails
 	 */
-	private double computeInfoGainRatio(Instances data, Attribute att) throws Exception {
-		double infoGain = computeInfoGain(data, att);
-		if (Utils.eq(infoGain, 0)) {
-			return 0.0;
+	private double computeInfoGain(Instances data, Attribute att) throws Exception {
+
+		double infoGain = computeEntropy(data);
+		Instances[] splitData = splitData(data, att);
+		double sum = 0.0;
+		for (int j = 0; j < att.numValues(); j++) {
+			if (splitData[j].numInstances() > 0) {
+				sum += computeInfoForAttribute(splitData[j]);
+			}
 		}
-		
-		double splitInfo = computeSplitInfo(data, att);
-		return infoGain / splitInfo;
+		return infoGain - sum * att.numValues();
 	}
 	
 	/**
-	 * Computes information gain for an attribute.
-	 *
-	 * @param data
-	 *            the data for which info gain is to be computed
-	 * @param att
-	 *            the attribute
-	 * @return the information gain for the given attribute and data
-	 * @throws Exception
-	 *             if computation fails
+	 * 计算每个属性的信息熵
+	 * 
+	 * @param splitData
+	 * @return
 	 */
-	private double computeSplitInfo(Instances data, Attribute att) throws Exception {
+	private double computeInfoForAttribute(Instances splitData) {
 		
-		double total = data.numInstances();
-		double splitInfo = 0.0;
-		
-		// 根据属性划分数据集
-		Instances[] splitData = splitData(data, att);
-		
-		// 计算属性的分裂信息熵
-		for (int j = 0; j < att.numValues(); j++) {
-			if (splitData[j].numInstances() > 0) {
-				double num = splitData[j].numInstances();
-				double probability = num / total;
-				splitInfo -= probability * Utils.log2(probability);
-			}
+		// 计算每一种类别的个数
+		double[] classCounts = new double[splitData.numClasses()];
+		Enumeration<Instance> instEnum = splitData.enumerateInstances();
+		while (instEnum.hasMoreElements()) {
+			Instance inst = (Instance) instEnum.nextElement();
+			classCounts[(int) inst.classValue()]++;
 		}
 		
-		return splitInfo;
-	}
-
-	/**
-	 * Computes information gain for an attribute.
-	 *
-	 * @param data
-	 *            the data for which info gain is to be computed
-	 * @param att
-	 *            the attribute
-	 * @return the information gain for the given attribute and data
-	 * @throws Exception
-	 *             if computation fails
-	 */
-	private double computeInfoGain(Instances data, Attribute att) throws Exception {
-		
-//		double total = data.numInstances();
-//		double splitInfo = 0.0;
-		
-		// TODO 2.1 计算训练集的熵
-		double infoGain = computeEntropy(data);
-		
-		// TODO 2.2 根据属性的属性值划分训练集成多个子数据集
-		Instances[] splitData = splitData(data, att);
-		
-		// TODO 2.3 遍历每个属性值对应的数据集计算熵
-		for (int j = 0; j < att.numValues(); j++) {
-			if (splitData[j].numInstances() > 0) {
-				// TODO 2.4 计算信息增益
-				infoGain -= ((double) splitData[j].numInstances() / (double) data.numInstances()) * computeEntropy(splitData[j]);
-				
-//				double num = splitData[j].numInstances();
-//				double probability = num / total;
-//				splitInfo -= probability * Utils.log2(probability);
-			}
+		double result = 1.0;
+		for (double d : classCounts) {
+			result *= d;
 		}
 		
-		return infoGain;
+		return result / (double)splitData.numInstances();
 	}
 	
 	/**
@@ -401,15 +349,12 @@ public class MyJ48 extends AbstractClassifier implements
 	 */
 	private double computeEntropy(Instances data) throws Exception {
 
-		// 计算每一种类别的个数
 		double[] classCounts = new double[data.numClasses()];
 		Enumeration<Instance> instEnum = data.enumerateInstances();
 		while (instEnum.hasMoreElements()) {
 			Instance inst = (Instance) instEnum.nextElement();
 			classCounts[(int) inst.classValue()]++;
 		}
-		
-		// 计算数据集的熵
 		double entropy = 0;
 		for (int j = 0; j < data.numClasses(); j++) {
 			if (classCounts[j] > 0) {
@@ -610,7 +555,7 @@ public class MyJ48 extends AbstractClassifier implements
 	 *            the options for the classifier
 	 */
 	public static void main(String[] args) {
-		runClassifier(new MyJ48(), args);
+		runClassifier(new WangID3(), args);
 	}
 
 	// @Override

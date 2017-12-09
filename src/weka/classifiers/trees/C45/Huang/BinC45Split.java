@@ -14,12 +14,12 @@
  */
 
 /*
- *    C45Split.java
+ *    BinC45Split.java
  *    Copyright (C) 1999-2012 University of Waikato, Hamilton, New Zealand
  *
  */
 
-package weka.classifiers.trees.j48;
+package weka.classifiers.trees.C45.Huang;
 
 import java.util.Enumeration;
 
@@ -29,18 +29,15 @@ import weka.core.RevisionUtils;
 import weka.core.Utils;
 
 /**
- * Class implementing a C4.5-type split on an attribute.
+ * Class implementing a binary C4.5-like split on an attribute.
  * 
  * @author Eibe Frank (eibe@cs.waikato.ac.nz)
  * @version $Revision: 10531 $
  */
-public class C45Split extends ClassifierSplitModel {
+public class BinC45Split extends ClassifierSplitModel {
 
   /** for serialization */
-  private static final long serialVersionUID = 3064079330067903161L;
-
-  /** Desired number of branches. */
-  protected int m_complexityIndex;
+  private static final long serialVersionUID = -1278776919563022474L;
 
   /** Attribute to split on. */
   protected final int m_attIndex;
@@ -63,19 +60,16 @@ public class C45Split extends ClassifierSplitModel {
   /** The sum of the weights of the instances. */
   protected final double m_sumOfWeights;
 
-  /** Number of split points. */
-  protected int m_index;
+  /** Static reference to splitting criterion. */
+  protected static InfoGainSplitCrit m_infoGainCrit = new InfoGainSplitCrit();
 
   /** Static reference to splitting criterion. */
-  protected static InfoGainSplitCrit infoGainCrit = new InfoGainSplitCrit();
-
-  /** Static reference to splitting criterion. */
-  protected static GainRatioSplitCrit gainRatioCrit = new GainRatioSplitCrit();
+  protected static GainRatioSplitCrit m_gainRatioCrit = new GainRatioSplitCrit();
 
   /**
    * Initializes the split model.
    */
-  public C45Split(int attIndex, int minNoObj, double sumOfWeights,
+  public BinC45Split(int attIndex, int minNoObj, double sumOfWeights,
     boolean useMDLcorrection) {
 
     // Get index of attribute to split on.
@@ -84,7 +78,7 @@ public class C45Split extends ClassifierSplitModel {
     // Set minimum number of objects.
     m_minNoObj = minNoObj;
 
-    // Set the sum of the weights
+    // Set sum of weights;
     m_sumOfWeights = sumOfWeights;
 
     // Whether to use the MDL correction for numeric attributes
@@ -92,8 +86,7 @@ public class C45Split extends ClassifierSplitModel {
   }
 
   /**
-   * Creates a C4.5-type split on the given data. Assumes that none of the class
-   * values is missing.
+   * Creates a C4.5-type split on the given data.
    * 
    * @exception Exception if something goes wrong
    */
@@ -101,24 +94,17 @@ public class C45Split extends ClassifierSplitModel {
   public void buildClassifier(Instances trainInstances) throws Exception {
 
     // Initialize the remaining instance variables.
-    m_numSubsets = 0;				// 分裂属性的子数据集个数
-    m_splitPoint = Double.MAX_VALUE;// 分裂属性的值
-    m_infoGain = 0;					// 分裂属性的信息增益
-    m_gainRatio = 0;				// 分裂属性的信息增益率
+    m_numSubsets = 0;
+    m_splitPoint = Double.MAX_VALUE;
+    m_infoGain = 0;
+    m_gainRatio = 0;
 
     // Different treatment for enumerated and numeric
     // attributes.
     if (trainInstances.attribute(m_attIndex).isNominal()) {
-      m_complexityIndex = trainInstances.attribute(m_attIndex).numValues();
-      m_index = m_complexityIndex;
-      // TODO 5.处理分裂属性
-//      System.out.println("STEP3.2.1.3.1 ==> 处理离散型属性");
       handleEnumeratedAttribute(trainInstances);
     } else {
-      m_complexityIndex = 2;
-      m_index = 0;
       trainInstances.sort(trainInstances.attribute(m_attIndex));
-//      System.out.println("STEP3.2.1.3.1 ==> 处理连续型属性");
       handleNumericAttribute(trainInstances);
     }
   }
@@ -138,6 +124,13 @@ public class C45Split extends ClassifierSplitModel {
    */
   public double splitPoint() {
     return m_splitPoint;
+  }
+
+  /**
+   * Returns (C4.5-type) gain ratio for the generated split.
+   */
+  public final double gainRatio() {
+    return m_gainRatio;
   }
 
   /**
@@ -170,52 +163,55 @@ public class C45Split extends ClassifierSplitModel {
   }
 
   /**
-   * Returns coding cost for split (used in rule learner).
-   */
-  @Override
-  public final double codingCost() {
-
-    return Utils.log2(m_index);
-  }
-
-  /**
-   * Returns (C4.5-type) gain ratio for the generated split.
-   */
-  public final double gainRatio() {
-    return m_gainRatio;
-  }
-
-  /**
    * Creates split on enumerated attribute.
    * 
    * @exception Exception if something goes wrong
    */
-  private void handleEnumeratedAttribute(Instances trainInstances) throws Exception {
+  private void handleEnumeratedAttribute(Instances trainInstances)
+    throws Exception {
 
+    Distribution newDistribution, secondDistribution;
+    int numAttValues;
+    double currIG, currGR;
     Instance instance;
+    int i;
 
-    m_distribution = new Distribution(m_complexityIndex, trainInstances.numClasses());
+    numAttValues = trainInstances.attribute(m_attIndex).numValues();
+    newDistribution = new Distribution(numAttValues,
+      trainInstances.numClasses());
 
     // Only Instances with known values are relevant.
     Enumeration<Instance> enu = trainInstances.enumerateInstances();
     while (enu.hasMoreElements()) {
       instance = enu.nextElement();
-      // 如果实例没有缺失值则存入相应的Bag中
       if (!instance.isMissing(m_attIndex)) {
-        m_distribution.add((int) instance.value(m_attIndex), instance);
+        newDistribution.add((int) instance.value(m_attIndex), instance);
       }
     }
+    m_distribution = newDistribution;
 
-    // Check if minimum number of Instances in at least two
-    // subsets.
-    if (m_distribution.check(m_minNoObj)) {
-      m_numSubsets = m_complexityIndex;
-      // 计算信息增益
-//      System.out.println("STEP3.2.1.3.2 ==> 处理离散型属性 ==> 计算信息增益");
-      m_infoGain = infoGainCrit.splitCritValue(m_distribution, m_sumOfWeights);
-      // 计算信息增益率
-//      System.out.println("STEP3.2.1.3.2 ==> 处理离散型属性 ==> 计算信息增益率");
-      m_gainRatio = gainRatioCrit.splitCritValue(m_distribution, m_sumOfWeights, m_infoGain);
+    // For all values
+    for (i = 0; i < numAttValues; i++) {
+
+      if (Utils.grOrEq(newDistribution.perBag(i), m_minNoObj)) {
+        secondDistribution = new Distribution(newDistribution, i);
+
+        // Check if minimum number of Instances in the two
+        // subsets.
+        if (secondDistribution.check(m_minNoObj)) {
+          m_numSubsets = 2;
+          currIG = m_infoGainCrit.splitCritValue(secondDistribution,
+            m_sumOfWeights);
+          currGR = m_gainRatioCrit.splitCritValue(secondDistribution,
+            m_sumOfWeights, currIG);
+          if ((i == 0) || Utils.gr(currGR, m_gainRatio)) {
+            m_gainRatio = currGR;
+            m_infoGain = currIG;
+            m_splitPoint = i;
+            m_distribution = secondDistribution;
+          }
+        }
+      }
     }
   }
 
@@ -230,6 +226,7 @@ public class C45Split extends ClassifierSplitModel {
     int firstMiss;
     int next = 1;
     int last = 0;
+    int index = 0;
     int splitIndex = -1;
     double currentInfoGain;
     double defaultEnt;
@@ -269,7 +266,7 @@ public class C45Split extends ClassifierSplitModel {
 
     // Compute values of criteria for all possible split
     // indices.
-    defaultEnt = infoGainCrit.oldEnt(m_distribution);
+    defaultEnt = m_infoGainCrit.oldEnt(m_distribution);
     while (next < firstMiss) {
 
       if (trainInstances.instance(next - 1).value(m_attIndex) + 1e-5 < trainInstances
@@ -283,13 +280,13 @@ public class C45Split extends ClassifierSplitModel {
         // values for criteria.
         if (Utils.grOrEq(m_distribution.perBag(0), minSplit)
           && Utils.grOrEq(m_distribution.perBag(1), minSplit)) {
-          currentInfoGain = infoGainCrit.splitCritValue(m_distribution,
+          currentInfoGain = m_infoGainCrit.splitCritValue(m_distribution,
             m_sumOfWeights, defaultEnt);
           if (Utils.gr(currentInfoGain, m_infoGain)) {
             m_infoGain = currentInfoGain;
             splitIndex = next - 1;
           }
-          m_index++;
+          index++;
         }
         last = next;
       }
@@ -297,13 +294,13 @@ public class C45Split extends ClassifierSplitModel {
     }
 
     // Was there any useful split?
-    if (m_index == 0) {
+    if (index == 0) {
       return;
     }
 
     // Compute modified information gain for best split.
     if (m_useMDLcorrection) {
-      m_infoGain = m_infoGain - (Utils.log2(m_index) / m_sumOfWeights);
+      m_infoGain = m_infoGain - (Utils.log2(index) / m_sumOfWeights);
     }
     if (Utils.smOrEq(m_infoGain, 0)) {
       return;
@@ -328,8 +325,8 @@ public class C45Split extends ClassifierSplitModel {
     m_distribution.addRange(1, trainInstances, splitIndex + 1, firstMiss);
 
     // Compute modified gain ratio for best split.
-    m_gainRatio = gainRatioCrit.splitCritValue(m_distribution, m_sumOfWeights,
-      m_infoGain);
+    m_gainRatio = m_gainRatioCrit.splitCritValue(m_distribution,
+      m_sumOfWeights, m_infoGain);
   }
 
   /**
@@ -341,9 +338,10 @@ public class C45Split extends ClassifierSplitModel {
   }
 
   /**
-   * Prints left side of condition..
+   * Prints left side of condition.
    * 
-   * @param data training set.
+   * @param data the data to get the attribute name from.
+   * @return the attribute name
    */
   @Override
   public final String leftSide(Instances data) {
@@ -354,8 +352,7 @@ public class C45Split extends ClassifierSplitModel {
   /**
    * Prints the condition satisfied by instances in a subset.
    * 
-   * @param index of subset
-   * @param data training set.
+   * @param index of subset and training set.
    */
   @Override
   public final String rightSide(int index, Instances data) {
@@ -364,12 +361,19 @@ public class C45Split extends ClassifierSplitModel {
 
     text = new StringBuffer();
     if (data.attribute(m_attIndex).isNominal()) {
-      text.append(" = " + data.attribute(m_attIndex).value(index));
+      if (index == 0) {
+        text.append(" = "
+          + data.attribute(m_attIndex).value((int) m_splitPoint));
+      } else {
+        text.append(" != "
+          + data.attribute(m_attIndex).value((int) m_splitPoint));
+      }
     } else if (index == 0) {
-      text.append(" <= " + Utils.doubleToString(m_splitPoint, 6));
+      text.append(" <= " + m_splitPoint);
     } else {
-      text.append(" > " + Utils.doubleToString(m_splitPoint, 6));
+      text.append(" > " + m_splitPoint);
     }
+
     return text.toString();
   }
 
@@ -389,9 +393,14 @@ public class C45Split extends ClassifierSplitModel {
       return "i[" + m_attIndex + "] == null";
     }
     if (data.attribute(m_attIndex).isNominal()) {
-      expr = new StringBuffer("i[");
+      if (index == 0) {
+        expr = new StringBuffer("i[");
+      } else {
+        expr = new StringBuffer("!i[");
+      }
       expr.append(m_attIndex).append("]");
-      expr.append(".equals(\"").append(data.attribute(m_attIndex).value(index))
+      expr.append(".equals(\"")
+        .append(data.attribute(m_attIndex).value((int) m_splitPoint))
         .append("\")");
     } else {
       expr = new StringBuffer("((Double) i[");
@@ -415,7 +424,7 @@ public class C45Split extends ClassifierSplitModel {
     double tempValue;
     Instance instance;
 
-    if ((allInstances.attribute(m_attIndex).isNumeric()) && (m_numSubsets > 1)) {
+    if ((!allInstances.attribute(m_attIndex).isNominal()) && (m_numSubsets > 1)) {
       Enumeration<Instance> enu = allInstances.enumerateInstances();
       while (enu.hasMoreElements()) {
         instance = enu.nextElement();
@@ -429,29 +438,6 @@ public class C45Split extends ClassifierSplitModel {
       }
       m_splitPoint = newSplitPoint;
     }
-  }
-
-  /**
-   * Returns the minsAndMaxs of the index.th subset.
-   */
-  public final double[][] minsAndMaxs(Instances data, double[][] minsAndMaxs,
-    int index) {
-
-    double[][] newMinsAndMaxs = new double[data.numAttributes()][2];
-
-    for (int i = 0; i < data.numAttributes(); i++) {
-      newMinsAndMaxs[i][0] = minsAndMaxs[i][0];
-      newMinsAndMaxs[i][1] = minsAndMaxs[i][1];
-      if (i == m_attIndex) {
-        if (data.attribute(m_attIndex).isNominal()) {
-          newMinsAndMaxs[m_attIndex][1] = 1;
-        } else {
-          newMinsAndMaxs[m_attIndex][1 - index] = m_splitPoint;
-        }
-      }
-    }
-
-    return newMinsAndMaxs;
   }
 
   /**
@@ -498,6 +484,7 @@ public class C45Split extends ClassifierSplitModel {
    * 
    * @exception Exception if something goes wrong
    */
+
   @Override
   public final int whichSubset(Instance instance) throws Exception {
 
@@ -505,7 +492,11 @@ public class C45Split extends ClassifierSplitModel {
       return -1;
     } else {
       if (instance.attribute(m_attIndex).isNominal()) {
-        return (int) instance.value(m_attIndex);
+        if ((int) m_splitPoint == (int) instance.value(m_attIndex)) {
+          return 0;
+        } else {
+          return 1;
+        }
       } else if (Utils.smOrEq(instance.value(m_attIndex), m_splitPoint)) {
         return 0;
       } else {

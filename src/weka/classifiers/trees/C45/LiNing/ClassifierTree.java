@@ -19,7 +19,7 @@
  *
  */
 
-package weka.classifiers.trees.j48;
+package weka.classifiers.trees.C45.LiNing;
 
 import java.io.Serializable;
 import java.util.LinkedList;
@@ -149,7 +149,7 @@ public class ClassifierTree implements Drawable, Serializable,
 		data = new Instances(data);
 		data.deleteWithMissingClass();
 
-		// TODO 2.创建决策树
+		// 创建决策树
 		buildTree(data, false);
 	}
 
@@ -174,13 +174,13 @@ public class ClassifierTree implements Drawable, Serializable,
 		m_isEmpty = false;
 		m_sons = null;
 
-		// TODO 3.2.1 根据前面选择的算法模型去调用相应的实现方法
+		// 3.2.1 根据前面选择的算法模型去调用相应的实现方法
 //		System.out.println("STEP3.2.1 ==> START 调用" + m_toSelectModel.getClass().getName() + "中的selectModel()模型");
 		m_localModel = m_toSelectModel.selectModel(data);
 //		System.out.println("STEP3.2.1 ==> END 返回" + getClass().getName() + " ==> buildTree()");
 
 		if (m_localModel.numSubsets() > 1) {
-			// TODO 3.2.2 分割数据集
+			// 3.2.2 分割数据集
 //			System.out.println("STEP3.2.2 ==> 分割数据集");
 			localInstances = m_localModel.split(data);
 			data = null;
@@ -188,12 +188,12 @@ public class ClassifierTree implements Drawable, Serializable,
 			// 遍历当前节点的子树
 //			System.out.println("STEP3.2.3 ==> 遍历子树个数 ==> 构建子树");
 			for (int i = 0; i < m_sons.length; i++) {
-				// TODO 3.2.3 构建子树
+				// 3.2.3 构建子树
 				m_sons[i] = getNewTree(localInstances[i]);
 				localInstances[i] = null;
 			}
 		} else {
-			// TODO 3.2.2 将数据集设为叶子节点
+			// 3.2.2 将数据集设为叶子节点
 //			System.out.println("STEP3.2.2 ==> 数据集为叶子节点");
 			m_isLeaf = true;
 			if (Utils.eq(data.sumOfWeights(), 0)) {
@@ -556,7 +556,7 @@ public class ClassifierTree implements Drawable, Serializable,
 	protected ClassifierTree getNewTree(Instances data) throws Exception {
 
 		ClassifierTree newTree = new ClassifierTree(m_toSelectModel);
-		// TODO 7.递归创建决策树
+		// 7.递归创建决策树
 		newTree.buildTree(data, false);
 
 		return newTree;

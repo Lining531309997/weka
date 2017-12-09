@@ -83,7 +83,8 @@ public final class GainRatioSplitCrit extends EntropyBasedSplitCrit {
       return 0;
     }
     denumerator = denumerator / totalnoInst;
-
+//    System.out.println("SplitInfo(S,A) ==> " + denumerator);
+//    System.out.println("GainRatio(S,A) ====> " + numerator / denumerator);
     return numerator / denumerator;
   }
 
@@ -104,6 +105,7 @@ public final class GainRatioSplitCrit extends EntropyBasedSplitCrit {
       returnValue = returnValue - lnFunc(noUnknown);
       returnValue = returnValue + lnFunc(totalnoInst);
     }
+    
     return returnValue / ContingencyTables.log2;
   }
 
